@@ -1,0 +1,8 @@
+[[redirects]]
+  from = "/api/supabase/*"
+  to = "https://oktdmqfgqmhipbpbtnbl.supabase.co/rest/v1/:splat"
+  status = 200
+  force = true
+  [redirects.headers]
+    apikey = "VITE_SUPABASE_ANON_KEY"
+    Authorization = "Bearer VITE_SUPABASE_ANON_KEY"
