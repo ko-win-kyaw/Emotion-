@@ -1,0 +1,37 @@
+:root { --danger: #e74c3c; --blue-main: #0033cc; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin: 0; padding-top: 250px; font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; }
+
+/* Fixed Top Section */
+.fixed-top-container { position: fixed; top: -25px; left: 0; width: 100%; z-index: 1000; background: #fff; }
+header { display: flex; align-items: center; justify-content: center; background: #fff; height: 80px; }
+.header-icon { width: 52px; height: auto; }
+.logo-text { font-size: 30px; color: #d32f2f; font-weight: bold; }
+.video-container { width: 100%; height: 150px; position: fixed; top: 40px; background: #000; }
+.db-video { width: 100%; height: 100%; object-fit: cover; }
+.buy-btn-overlay { position: absolute; top: 10px; left: 10px; z-index: 1010; padding: 5px 15px; background: #28a745; color: white; text-decoration: none; border-radius: 50px; font-size: 12px; border: 1px solid white; }
+
+/* Magic Box Overlay */
+#global-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: pointer; }
+.magic-box { text-align: center; padding: 30px; background: linear-gradient(45deg, #ff0080, #ff8c00, #ffd700, #40e0d0, #9932cc); background-size: 400% 400%; border: 4px solid #fff; border-radius: 30px; color: #fff; width: 85%; max-width: 320px; animation: rainbowFlow 4s infinite, bounce 2s infinite; }
+
+@keyframes rainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+/* Content UI */
+.banner { margin: 15px 10px; font-size: 30px; padding: 20px; background: linear-gradient(135deg, var(--blue-main), #5dade2); border-radius: 15px; text-align: center; color: white; }
+.hospital-links { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 15px; }
+.hospital-links a { text-decoration: none; background: #f00; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 20px; border: 1px solid #f3b64d; }
+
+/* Feedback UI */
+.feedback-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; margin: 20px 10px; }
+.rating-display-box { margin-bottom: 20px; background: #fffde7; padding: 15px; border-radius: 15px; border: 2px dashed #fbc02d; }
+.star-rating { display: flex; flex-direction: row-reverse; justify-content: center; font-size: 45px; margin: 15px 0; }
+.star-rating input { display: none; }
+.star-rating label { color: #ddd; cursor: pointer; padding: 0 5px; }
+.star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #ffd700; }
+.submit-btn { display: inline-block; background: #ffd700; color: #000; padding: 12px 50px; border-radius: 30px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        .section { padding: 10px; }
+        .card { display: flex; gap: 15px; background: #fff; padding: 15px; border-radius: 12px; border-left: 6px solid var(--danger); box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+                .notice { background: linear-gradient(180deg, lightblue, blue, blue, blue, blue, lightblue); color: white; text-align: center; padding: 15px; border: 5px solid #f00; border-radius: 10px; margin: 10px; }
