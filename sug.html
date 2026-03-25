@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suresh Friend Suggestions</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <style>
+        :root { --purple: #800080; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        
+        .suggestions-container { padding: 15px; background: #f8f9fa; min-height: 100vh; }
+        
+        .search-header { 
+            position: sticky; top: 0; background: #f8f9fa; 
+            z-index: 10; padding: 10px 0; border-bottom: 1px solid #eee;
+        }
+        
+        .search-box input {
+            width: 100%; padding: 12px 15px; border-radius: 25px;
+            border: 1px solid #ddd; outline: none; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-top: 8px;
+        }
+        
+        .user-list-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 15px; }
+        
+        .user-card {
+            background: white; padding: 15px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        
+        .user-avatar { 
+            width: 45px; height: 45px; background: var(--purple); 
+            color: white; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 18px;
+        }
+        
+        .action-btns { display: flex; gap: 8px; }
+        
+        .btn-chat { 
+            background: var(--purple); color: white; border: none; 
+            padding: 8px 15px; border-radius: 8px; cursor: pointer; 
+            font-weight: bold;
+        }
+        
+        .btn-block { 
+            background: #ff4757; color: white; border: none; 
+            padding: 8px 15px; border-radius: 8px; cursor: pointer;
+            font-weight: bold;
+        }
+                        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 60px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; z-index: 2000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #666; font-size: 10px; }
+        .nav-item img { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--purple); font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="suggestions-container">
+        <div class="search-header">
+            <h3 style="color: var(--purple);">Find Friends (Suresh)</h3>
+            <div class="search-box">
+                <input type="text" id="userSearch" placeholder="Friends ရှာရန်..." oninput="handleSearch()">
+            </div>
+        </div>
+        
+        <div id="suggestionsList" class="user-list-grid">
+            </div>
+    </div>
+    <nav class="bottom-nav">
+        <a href="user.html" class="nav-item">
+            <img src="https://cdn-icons-png.flaticon.com/512/1946/1946488.png"><span data-lang="nav_user">User</span>
+        </a>
+        <a href="group.html" class="nav-item">
+            <img src="https://cdn-icons-png.flaticon.com/512/615/615075.png"><span data-lang="nav_group">Group</span>
+        </a>
+        <a href="live.html" class="nav-item">
+            <img src="https://cdn-icons-png.flaticon.com/512/4404/4404094.png"><span data-lang="nav_live">Live</span>
+        </a>
+        <a href="profile.html" class="nav-item active">
+            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077063.png"><span data-lang="nav_profile">Profile</span>
+        </a>
+    </nav>
+
+<script>
+    // Firebase Configuration (Senior ၏ မူရင်း config ကို ဤနေရာတွင် အစားထိုးပါ)
+    const firebaseConfig = {
+        apiKey: "AIzaSy...", 
+        projectId: "your-project-id",
+        // ... အခြား config များ
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let allUsers = []; 
+    let blockedUsers = []; 
+
+    // Login စစ်ဆေးပြီး Suggestions များ စတင်တင်မည်
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            loadSuggestions();
+        } else {
+            console.log("User is not logged in");
+        }
+    });
+
+    async function loadSuggestions() {
+        const myUid = auth.currentUser.uid;
+        
+        try {
+            // ၁။ Block စာရင်းကို အရင်ယူမည်
+            const blockDoc = await db.collection("users").doc(myUid).collection("blocked").get();
+            blockedUsers = blockDoc.docs.map(doc => doc.id);
+
+            // ၂။ User များကို ဆွဲထုတ်မည်
+            const snap = await db.collection("users").orderBy("lastLogin", "desc").limit(100).get();
+            
+            allUsers = [];
+            snap.forEach(doc => {
+                const u = doc.data();
+                if (u.uid !== myUid && !blockedUsers.includes(u.uid)) {
+                    allUsers.push(u);
+                }
+            });
+            
+            renderUsers(allUsers);
+        } catch (e) { 
+            console.error("Error loading users:", e); 
+        }
+    }
+
+    async function handleSearch() {
+        const term = document.getElementById('userSearch').value.toLowerCase();
+        if (term.length < 1) { renderUsers(allUsers); return; }
+
+        try {
+            const snap = await db.collection("users")
+                .where("displayName", ">=", term)
+                .where("displayName", "<=", term + '\uf8ff')
+                .limit(20)
+                .get();
+
+            let searchResults = [];
+            snap.forEach(doc => {
+                const u = doc.data();
+                if (u.uid !== auth.currentUser.uid && !blockedUsers.includes(u.uid)) {
+                    searchResults.push(u);
+                }
+            });
+            renderUsers(searchResults);
+        } catch (e) {
+            console.error("Search error:", e);
+        }
+    }
+
+    function renderUsers(users) {
+        const listArea = document.getElementById('suggestionsList');
+        listArea.innerHTML = users.length === 0 ? "<p style='text-align:center; padding:20px; color:#999;'>ရှာမတွေ့ပါ</p>" : "";
+        
+        users.forEach(u => {
+            const firstLetter = u.displayName ? u.displayName[0].toUpperCase() : "?";
+            const div = document.createElement('div');
+            div.className = "user-card";
+            div.innerHTML = `
+                <div class="user-info">
+                    <div class="user-avatar">${firstLetter}</div>
+                    <div>
+                        <b>${u.displayName || "အမည်မသိ"}</b>
+                        <div style="font-size:10px; color:gray;">Active recently</div>
+                    </div>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-chat" onclick="startPrivateChat('${u.uid}', '${u.displayName}')">Chat</button>
+                    <button class="btn-block" onclick="blockUser('${u.uid}')">Block</button>
+                </div>
+            `;
+            listArea.appendChild(div);
+        });
+    }
+
+    async function blockUser(targetUid) {
+        if (!confirm("Block လုပ်မှာ သေချာလား Senior?")) return;
+        const myUid = auth.currentUser.uid;
+        
+        try {
+            await db.collection("users").doc(myUid).collection("blocked").doc(targetUid).set({
+                blockedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("Blocked Successfully!");
+            loadSuggestions(); 
+        } catch (e) {
+            alert("Block failed: " + e.message);
+        }
+    }
+
+    function startPrivateChat(uid, name) {
+        // Chat Page သို့ သွားမည့် logic
+        window.location.href = `chat.html?id=${uid}&name=${name}`;
+    }
+</script>
+
+</body>
+</html>
+
