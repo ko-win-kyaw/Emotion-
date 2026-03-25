@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Developer Panel | EmotioN</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root { --purple: #800080; --bg: #f0f2f5; --card: #ffffff; --danger: #ff4757; --success: #2ed573; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .admin-container { max-width: 900px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, var(--purple), #4b0082); color: white; padding: 25px; border-radius: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .manager-card { background: var(--card); padding: 25px; border-radius: 18px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03); }
+        h4 { margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .input-group { display: flex; gap: 12px; margin-top: 10px; }
+        input, textarea { flex: 1; padding: 14px; border: 2px solid #edf2f7; border-radius: 12px; outline: none; font-family: inherit; }
+        .btn { padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 700; border: none; transition: 0.3s; font-size: 14px; }
+        .btn-vip { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 12px; margin-bottom: 10px; background: #fff; border: 1px solid #f0f0f0; }
+        .user-info b { color: var(--purple); font-size: 15px; }
+        .user-info small { color: #718096; display: block; }
+        .feedback-card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 15px; border-left: 5px solid var(--purple); }
+    </style>
+</head>
+<body>
+
+<div class="admin-container" id="adminContent" style="display: none;">
+    <div class="header">
+        <div>
+            <h2 style="margin:0;">Dev Panel ⚙️</h2>
+            <small id="welcomeName">Welcome back, Senior</small>
+        </div>
+        <button class="btn" style="background:white; color:var(--purple);" onclick="location.reload()">Refresh Data</button>
+    </div>
+
+    <div class="manager-card" style="border-top: 5px solid gold;">
+        <h4>🔔 Pending Page Requests</h4>
+        <div id="requestListArea"></div>
+    </div>
+
+    <div class="manager-card">
+        <h4>🚀 User Manager (VIP & Search)</h4>
+        <input type="text" id="userSearchInput" placeholder="အမည်ဖြင့် ရှာရန်..." onkeyup="searchUsers()" style="width:100%; margin-bottom:10px;">
+        <div class="input-group">
+            <input type="text" id="targetUid" placeholder="User UID...">
+            <button class="btn btn-vip" onclick="makeVIP()">Upgrade to 10k</button>
+        </div>
+        <div id="userListArea" style="max-height: 300px; overflow-y: auto; margin-top:15px;"></div>
+    </div>
+
+    <div class="manager-card" style="border-top: 5px solid #007bff;">
+        <h4>📢 Broadcast (စုပြီးပို့မည့်စနစ်)</h4>
+        <div class="input-group" style="flex-direction: column;">
+            <input type="text" id="broadcastTitle" placeholder="ခေါင်းစဉ်..." style="margin-bottom: 10px;">
+            <textarea id="broadcastMsg" placeholder="သတင်းစကား..." style="height: 80px;"></textarea>
+            <button class="btn" style="background: #007bff; color: white; margin-top: 10px;" onclick="sendBatchBroadcast()">
+                🚀 Send to All Users
+            </button>
+        </div>
+    </div>
+
+    <div class="manager-card" style="border-top: 5px solid var(--danger);">
+        <h4 style="color: var(--danger);">🚫 Ban System</h4>
+        <div class="input-group">
+            <input type="text" id="banTarget" placeholder="Device ID...">
+            <button class="btn btn-danger" onclick="banUser()">Permanently Ban</button>
+        </div>
+    </div>
+
+    <h4>📝 Recent Feedbacks</h4>
+    <div id="feedbackList"></div>
+</div>
+
+<div id="denied" style="display:none; text-align:center; margin-top:100px;">
+    <h1 style="color:var(--danger);">Access Denied! ❌</h1>
+    <p>Developer Gmail ဖြင့် ဝင်ရောက်ပေးပါ။</p>
+</div>
+
+<script>
+    // ၁။ Supabase ချိတ်ဆက်ခြင်း (Proxy နည်းလမ်း)
+    const { createClient } = supabase;
+    const supabaseUrl = window.location.origin + '/api/supabase';
+    const supabaseKey = 'public-access'; 
+    const _supabase = createClient(supabaseUrl, supabaseKey);
+
+    // ၂။ Admin Emails (Senior မှာထားတဲ့အတိုင်း ၂ ခု)
+    const adminEmails = ["toetetye777@gmail.com", "uwinkyawdevelopbusinessco@gmail.com"];
+
+    async function checkAuth() {
+        const { data: { user } } = await _supabase.auth.getUser();
+        if (user && adminEmails.includes(user.email)) {
+            document.getElementById('adminContent').style.display = 'block';
+            document.getElementById('welcomeName').innerText = `Senior: ${user.email}`;
+            loadInitialData();
+        } else {
+            document.getElementById('denied').style.display = 'block';
+        }
+    }
+
+    // ၃။ Data များ ဆွဲတင်ခြင်း
+    async function loadInitialData() {
+        loadRequests();
+        loadUserList();
+        loadFeedbacks();
+    }
+
+    async function loadUserList() {
+        const { data } = await _supabase.from('profiles').select('*').limit(50);
+        const area = document.getElementById('userListArea');
+        area.innerHTML = "";
+        if(data) {
+            data.forEach(u => {
+                const div = document.createElement('div');
+                div.className = "user-item user-admin-card";
+                div.innerHTML = `
+                    <div class="user-info" onclick="copyInfo('${u.id}', '${u.device_id}')" style="cursor:pointer;">
+                        <b>${u.is_crown ? '👑' : ''} ${u.display_name || u.name}</b>
+                        <small>UID: ${u.id.substring(0,8)} | Device: ${u.device_id || 'N/A'}</small>
+                    </div>
+                    <button class="btn" style="background:#f39c12; color:white; padding:5px 10px;" onclick="resetDevice('${u.id}')">Reset</button>
+                `;
+                area.appendChild(div);
+            });
+        }
+    }
+
+    // ၄။ Broadcast Logic (Batch - စုပြီးပို့ခြင်း)
+    async function sendBatchBroadcast() {
+        const title = document.getElementById('broadcastTitle').value;
+        const msg = document.getElementById('broadcastMsg').value;
+        if(!title || !msg) return alert("စာသားဖြည့်ပါ Senior");
+
+        if(!confirm("User အားလုံးကို Notification စုပြီး ပို့မှာလား?")) return;
+
+        // အကုန်လုံးကို တစ်ယောက်ချင်းမပို့ဘဲ profiles ကနေ ID တွေယူပြီး 
+        // Notifications table ထဲကို တစ်ခါတည်း အစုလိုက် (Bulk Insert) ထည့်မှာဖြစ်လို့ စရိတ်သက်သာပါတယ်
+        const { data: users } = await _supabase.from('profiles').select('id');
+        
+        const notifications = users.map(u => ({
+            receiver_id: u.id,
+            title: title,
+            body: msg,
+            status: 'unread',
+            created_at: new Date()
+        }));
+
+        const { error } = await _supabase.from('notifications').insert(notifications);
+        if(!error) alert("Broadcast Sent Successfully!");
+    }
+
+    // ၅။ VIP & Ban Tools
+    async function makeVIP() {
+        const uid = document.getElementById('targetUid').value;
+        await _supabase.from('profiles').update({ friend_limit: 10000, is_vip: true }).eq('id', uid);
+        alert("Upgrade Success!");
+    }
+
+    async function banUser() {
+        const uid = document.getElementById('targetUid').value;
+        const device = document.getElementById('banTarget').value;
+        
+        await _supabase.from('profiles').update({ is_banned: true }).eq('id', uid);
+        if(device) {
+            await _supabase.from('banned_devices').insert([{ device_id: device, user_id: uid }]);
+        }
+        alert("Banned Permanently!");
+    }
+
+    function copyInfo(uid, devId) {
+        document.getElementById('targetUid').value = uid;
+        document.getElementById('banTarget').value = devId || "";
+    }
+
+    checkAuth();
+</script>
+</body>
+</html>
+
