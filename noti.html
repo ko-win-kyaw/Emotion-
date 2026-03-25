@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmotioN Smart Notification</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <style>
+        :root { --purple: #800080; --bg: #f4f7f6; --glass: rgba(128, 0, 128, 0.08); }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; padding-bottom: 80px; }
+        
+        .header-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 400px; text-align: center; margin-bottom: 20px; border-top: 4px solid var(--purple); }
+        h2 { color: var(--purple); margin: 10px 0; font-size: 22px; }
+        
+        .btn-test { background: var(--purple); color: white; border: none; padding: 10px; border-radius: 12px; cursor: pointer; font-size: 13px; width: auto; padding: 8px 20px; transition: 0.3s; opacity: 0.8; }
+        .btn-test:hover { opacity: 1; }
+
+        .notif-container { width: 100%; max-width: 400px; }
+        .notif-header { font-weight: bold; color: #555; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 0 5px; }
+        
+        .notif-item { 
+            background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px;
+            display: flex; align-items: flex-start; gap: 15px; border: 1px solid #efefef; transition: 0.3s;
+            position: relative; cursor: pointer;
+        }
+        .notif-item:active { transform: scale(0.98); background: #f9f9f9; }
+        .notif-item.unread { background: var(--glass); border-left: 5px solid var(--purple); }
+        
+        .notif-icon { font-size: 24px; background: #eee; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+        .notif-content { text-align: left; flex: 1; }
+        .notif-title { font-weight: bold; font-size: 15px; color: #222; }
+        .notif-body { font-size: 13px; color: #555; margin-top: 3px; line-height: 1.4; }
+        .notif-time { font-size: 11px; color: #999; margin-top: 6px; display: block; }
+        .unread-dot { width: 10px; height: 10px; background: #e74c3c; border-radius: 50%; position: absolute; right: 15px; top: 15px; }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+                                      .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 60px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; z-index: 2000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #666; font-size: 10px; }
+        .nav-item img { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--purple); font-weight: bold; }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="header-card">
+        <h2>Notifications</h2>
+        <p id="userName" style="font-size: 13px; color: #888;">Checking status...</p>
+        <button class="btn-test" onclick="testSelfNotification()">Test Notification</button>
+    </div>
+
+    <div class="notif-container">
+        <div class="notif-header">
+            <span>အကြောင်းကြားစာများ</span>
+            <span id="unreadCount" style="color: var(--purple); font-size: 13px;"></span>
+        </div>
+        <div id="notifList">
+            <p style="text-align: center; color: #999;">Loading...</p>
+        </div>
+    </div>
+ 
+               <nav class="bottom-nav">
+                    <a href=love.html" class="nav-item"style="font-size:15px;" >
+            💜<span data-lang="nav_user">Love</span>
+        </a>
+                            <a href="phospital.html" class="nav-item"style="font-size:15px;" >
+            📝<span data-lang="nav_user">page</span>
+   
+        </nav>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // ၁။ Supabase Configuration (Netlify Proxy သုံးထားသည်)
+    const { createClient } = supabase;
+    const supabaseUrl = window.location.origin + '/api/supabase';
+    const supabaseKey = 'public-access'; 
+    const _supabase = createClient(supabaseUrl, supabaseKey);
+
+    // ၂။ User အခြေအနေ စစ်ဆေးခြင်း
+    async function checkUser() {
+        const { data: { user }, error } = await _supabase.auth.getUser();
+        if (user) {
+            document.getElementById('userName').innerText = "Logged in as: " + (user.user_metadata.full_name || user.email);
+            loadNotificationHistory(user.id);
+        } else {
+            window.location.href = "login.html"; // Login မဝင်ထားရင် နှင်ထုတ်မည်
+        }
+    }
+
+    // ၃။ Notification များ ဆွဲထုတ်ခြင်း (Realtime)
+    function loadNotificationHistory(myUid) {
+        const listDiv = document.getElementById('notifList');
+
+        // Initial Load (ပထမဆုံး အချက်အလက်များ ဆွဲထုတ်ခြင်း)
+        fetchNotifications(myUid);
+
+        // Realtime Subscription (Noti အသစ်တက်လာရင် တန်းပြရန်)
+        _supabase.channel('noti-updates')
+        .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'notifications', 
+            filter: `receiver_id=eq.${myUid}` 
+        }, payload => {
+            fetchNotifications(myUid); // အပြောင်းအလဲရှိတိုင်း ပြန်ဆွဲမည်
+        })
+        .subscribe();
+    }
+
+    async function fetchNotifications(myUid) {
+        const listDiv = document.getElementById('notifList');
+        const { data, error } = await _supabase
+            .from('notifications')
+            .select('*')
+            .eq('receiver_id', myUid)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) {
+            listDiv.innerHTML = `<p style="color:red;">Error loading notifications.</p>`;
+            return;
+        }
+
+        let unread = 0;
+        listDiv.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            listDiv.innerHTML = `<div class="empty-state">🔔<br>အကြောင်းကြားစာ မရှိသေးပါ</div>`;
+            return;
+        }
+
+        data.forEach(d => {
+            if (d.status === "unread") unread++;
+
+            const item = document.createElement('div');
+            item.className = `notif-item ${d.status === 'unread' ? 'unread' : ''}`;
+            
+            // Notification ကိုနှိပ်ရင် လုပ်ဆောင်မည့် Logic
+            item.onclick = () => handleNotifClick(d.id, d.status, d.post_id);
+            
+            item.innerHTML = `
+                <div class="notif-icon">${getIcon(d.title)}</div>
+                <div class="notif-content">
+                    <div class="notif-title">${d.title}</div>
+                    <div class="notif-body">${d.body}</div>
+                    <span class="notif-time">${formatTime(d.created_at)}</span>
+                </div>
+                ${d.status === 'unread' ? '<div class="unread-dot"></div>' : ''}
+            `;
+            listDiv.appendChild(item);
+        });
+
+        document.getElementById('unreadCount').innerText = unread > 0 ? `${unread} စောင်မဖတ်ရသေး` : "အားလုံးဖတ်ပြီးပြီ";
+    }
+
+    // ၄။ Noti နှိပ်လျှင် Post ဆီသွားခြင်းနှင့် Status ပြောင်းခြင်း
+    async function handleNotifClick(id, status, postId) {
+        // ဖတ်ပြီးကြောင်း DB မှာ Update လုပ်မည်
+        if (status === "unread") {
+            await _supabase.from('notifications').update({ status: 'read' }).eq('id', id);
+        }
+        
+        // Post ID ပါလျှင် group.html ဆီသို့ သွားမည်
+        if (postId) {
+            window.location.href = `group.html?id=${postId}`;
+        }
+    }
+
+    function getIcon(title) {
+        if (title.includes("Like")) return "❤️";
+        if (title.includes("Reaction")) return "😆";
+        if (title.includes("Shared")) return "🔁";
+        if (title.includes("Message")) return "💬";
+        return "🔔";
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) return "ခုနက";
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + " | " + date.toLocaleDateString();
+    }
+
+    // ၅။ Test Notification (Self Noti)
+    async function testSelfNotification() {
+        const { data: { user } } = await _supabase.auth.getUser();
+        if(!user) return;
+
+        const { error } = await _supabase.from('notifications').insert([{
+            receiver_id: user.id,
+            sender_id: user.id,
+            title: "Test Success! ✅",
+            body: "Senior ရေ... ဒါက Supabase ကနေ ပို့တဲ့ Test Noti ပါ။",
+            post_id: null, 
+            status: "unread"
+        }]);
+
+        if (error) alert("Error: " + error.message);
+    }
+
+    // Initialize
+    checkUser();
+</script>
+</body>
+</html>
