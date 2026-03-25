@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <title>Health Community - Master</title>
+
+    <script src="https://openfpcdn.io/fingerprintjs/v4/iife.js"></script>
+        <style>/* ===== GLOBAL STYLES ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Padauk', 'Pyidaungsu', 'Noto Sans Myanmar', sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 0;
+    padding-bottom: 70px; /* Bottom nav အတွက် နေရာချန် */
+}
+
+/* ===== HEADER ===== */
+.header {
+    background: purple;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ===== MODALS ===== */
+#nameSetupModal, #phoneLoginModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== POST CARD ===== */
+.post-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px !important;
+    margin: 10px auto;
+    width: 100%;
+    max-width: 600px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Media Container */
+.post-media-container {
+    width: 100%;
+    margin: 10px -15px 0 -15px !important; /* Card padding ကို ချိုးပြီး Screen ပြည့်အောင် */
+    padding: 0;
+    position: relative;
+    left: 0;
+    right: 0;
+}
+
+/* Video and Image Styles */
+.post-media-container video,
+.post-media-container img {
+    width: 100vw !important; /* Viewport width အတိုင်း */
+    max-width: 600px; /* ဒါပေမယ့် သတ်မှတ်ထားတာထက် မကျော်ရ */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    object-fit: cover;
+}
+
+/* Multiple Images Grid */
+.post-media-grid {
+    display: grid;
+    gap: 5px;
+    margin: 10px -15px 0 -15px !important;
+    width: 100vw;
+    max-width: 600px;
+}
+
+.post-media-grid img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+/* ===== BOTTOM NAVIGATION ===== */
+.bottom-nav { 
+    position: fixed; 
+    bottom: 0; 
+    left: 0; /* ဘယ်ဘက်က 0 */
+    right: 0; /* ညာဘက်က 0 */
+    width: 100%; 
+    height: 60px; 
+    background: white; 
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center; 
+    border-top: 1px solid #eee; 
+    z-index: 2000;
+    box-sizing: border-box;
+    padding: 0 10px;
+}
+
+.nav-item { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+    text-decoration: none; 
+    color: #666; 
+    font-size: 10px;
+    flex: 1;
+    text-align: center;
+}
+
+.nav-item img { 
+    width: 22px; 
+    height: 22px; 
+    margin-bottom: 4px; 
+}
+
+.nav-item.active { 
+    color: purple; 
+    font-weight: bold; 
+}
+
+/* ===== VIDEO STYLES ===== */
+video {
+    width: 100%;
+    max-height: 500px;
+    background: #000;
+    display: block;
+}
+
+/* ===== BADGE STYLES ===== */
+.badge-official { 
+    border-radius: 4px; 
+    font-weight: bold; 
+    margin-left: 3px; 
+    font-size: 12px;
+    padding: 2px 8px;
+    display: inline-block;
+}
+
+.crown-bg { 
+    background: linear-gradient(45deg, #a020f0, #ff00ff); 
+    color: white; 
+    border: 1px solid #fff; 
+}
+.gold-bg { 
+        background: linear-gradient(45deg,#00ff00, #a0f020); 
+    color: white; 
+    border: 1px solid
+         white; }
+
+
+/* ===== NEWS FEED ===== */
+#newsFeed {
+    margin-bottom: 80px;
+    min-height: 200px;
+    width: 100%;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0;
+}
+
+/* ===== LOADING STATUS ===== */
+.loading-status {
+    text-align: center;
+    padding: 50px;
+    color: gray;
+}
+
+/* ===== MEDIA PREVIEW BOX ===== */
+#mediaPreviewBox {
+    margin-top: 12px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+#mediaPreviewBox img,
+#mediaPreviewBox video {
+    width: 100%;
+    border-radius: 8px;
+}
+/* Media Full Width */
+.post-card video,
+.post-card img {
+    width: 100% !important;
+    border-radius: 0 !important;
+    display: block;
+}
+
+.post-card div[style*="margin-top:10px; background:#000;"] {
+    margin-left: -15px !important;
+    margin-right: -15px !important;
+    width: calc(100% + 30px) !important;
+}
+
+.post-card div[style*="display: grid"] {
+    margin-left: -15px !important;
+    margin-right: -15px !important;
+    width: calc(100% + 30px) !important;
+}
+
+.photo-grid {
+    display: grid;
+    gap: 4px;
+    margin-top: 10px;
+}
+.grid-item {
+    height: 250px; /* ဒီအမြင့်က အရေးကြီးပါတယ် */
+    overflow: hidden;
+    background: #eee;
+}
+.grid-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.grid-1 { grid-template-columns: 1fr; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.grid-item { position: relative; cursor: pointer; height: 250px; overflow: hidden; }
+.grid-item img { width: 100%; height: 100%; object-fit: cover; }
+.grid-3 .grid-item:first-child { grid-row: span 2; }
+
+.more-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: bold;
+}
+
+/* Slide Viewer (Lightbox) */
+#photoViewer {
+    display: none; position: fixed; z-index: 20000;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: black; align-items: center; justify-content: center;
+}
+.nav-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.2); color: white; border: none;
+    padding: 15px; font-size: 20px; cursor: pointer; border-radius: 50%;
+}
+/* Post ရော Comment ပါ သုံးမယ့် style */
+.post-text, .comment-text {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 5px;
+    white-space: pre-wrap;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4; /* ၄ ကြောင်းပဲပြမယ် */
+    -webkit-box-orient: vertical;
+}
+
+.expanded {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+}
+
+.see-more-btn {
+    color: purple;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+    </style>
+</head>
+<body>
+
+  <div id="phoneLoginModal">
+        <div style="background:white; width:90%; max-width:400px; padding:20px; border-radius:10px; color: black;">
+            <h3>Phone Login</h3>
+            <input type="tel" id="phoneNumber" placeholder="9xxxxxxxx" style="width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:5px; box-sizing: border-box;">
+            <div id="recaptcha-container"></div>
+            <button onclick="sendOTP()" id="sendOTPBtn" style="background:purple; color:white; padding:12px; border:none; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Send OTP</button>
+            <div id="otpSection" style="display:none; margin-top: 10px;">
+                <input type="text" id="otpCode" placeholder="Enter OTP" style="width:100%; padding:12px; margin-bottom:10px; border:1px solid #ddd; border-radius:5px; box-sizing: border-box;">
+                <button onclick="verifyOTP()" style="background:green; color:white; padding:12px; border:none; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Verify OTP</button>
+            </div>
+            <button onclick="closePhoneLogin()" style="background:none; color:gray; padding:10px; border:none; width:100%; margin-top:10px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div class="header" style="background:purple; color:white; padding:15px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <div style="font-weight: bold;">Users</div>
+                <span id="adminBadge" style="display:none; background:red; font-size:10px; padding:2px 5px; border-radius:3px;">ADMIN</span>
+            </div>
+            <small id="userNameDisplay">Guest</small>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button onclick="loginWithGoogle()" style="background:white; border:none; padding:5px 10px; border-radius:5px; font-size:12px; cursor:pointer;">Google</button>
+            <button onclick="showPhoneLogin()" style="background:green; color:white; padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-size:12px;">Phone</button>
+            <a href="profile.html" style="text-decoration:none; font-size:22px;">👤</a>
+            <a href="index.html" style="text-decoration:none; font-size:22px;">🏠</a>
+        </div>
+    </div>
+
+    <div id="nameSetupModal">
+        <div style="background:white; width:90%; max-width:350px; padding:25px; border-radius:15px; text-align:center; color: black;">
+            <h3 style="color:purple; margin-top:0;">သင့်အမည်ကို အတည်ပြုပေးပါ</h3>
+            <input type="text" id="setupUserName" placeholder="အမည်ရိုက်ပါ..." style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px; box-sizing: border-box;">
+            <button onclick="saveInitialName()" style="width:100%; background:purple; color:white; padding:12px; border:none; border-radius:8px; font-weight:bold;">အတည်ပြုမည်</button>
+        </div>
+    </div>
+
+    <div class="card" style="width: 95%; max-width: 500px; margin: 15px auto; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); background: #fff;">
+        <textarea id="postContent" rows="3" placeholder="ဗဟုသုတများ မျှဝေပါ..." style="width: 100%; border-radius: 8px; padding: 12px; border: 1px solid #ddd; outline: none; box-sizing: border-box; resize: none;"></textarea>
+        <div style="background: #fff5f5; color: #d93025; border-radius: 8px; text-align: center; font-size: 11px; margin: 10px 0; padding: 6px; border: 1px solid #ffebeb;">
+            🇲🇲 ဗီဒီယို 20MB အောက်သာ တင်ပါရန် 🌎
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;" onchange="previewMedia(this)">
+            <label for="mediaInput" style="background: #f0f2f5; padding: 10px; border-radius: 8px; cursor: pointer; flex: 1; text-align: center; font-size: 14px;">📷 ပုံ / ဗီဒီယို</label>
+            <button id="btnPost" style="flex: 1; background: purple; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold;" onclick="uploadAndPost('health_posts')">တင်မည်</button>
+        </div>
+        <div id="mediaPreviewBox" style="margin-top: 12px; display: none; position: relative; border-radius: 8px; overflow: hidden;"></div>
+    </div>
+
+    <div id="newsFeed" style="margin-bottom: 80px; min-height: 200px;">
+        <div class="loading-status" style="text-align:center; padding:50px; color:gray;">
+            ⏳ ပို့စ်များကို ရှာဖွေနေပါသည်...
+        </div>
+    </div>
+<div id="photoViewer" 
+     style="display:none; position:fixed; z-index:20000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column; touch-action: none;"
+     ontouchstart="handleTouchStart(event)" 
+     ontouchmove="handleTouchMove(event)" 
+     ontouchend="handleTouchEnd()">
+     
+    <span onclick="closePhotoViewer()" style="position:absolute; top:20px; right:20px; color:white; font-size:45px; cursor:pointer; z-index:20001; padding:10px;">&times;</span>
+    
+    <button class="nav-btn" style="position:absolute; left:15px; background:rgba(255,255,255,0.2); color:white; border:none; padding:15px; border-radius:50%; font-size:25px; cursor:pointer; z-index:20001;" onclick="changeSlide(-1)">&#10094;</button>
+    
+    <img id="activeImg" style="max-width:100%; max-height:95%; object-fit:contain; transition: transform 0.3s ease;">
+    
+    <button class="nav-btn" style="position:absolute; right:15px; background:rgba(255,255,255,0.2); color:white; border:none; padding:15px; border-radius:50%; font-size:25px; cursor:pointer; z-index:20001;" onclick="changeSlide(1)">&#10095;</button>
+    
+    <div id="photoCount" style="position:absolute; bottom:20px; color:white; font-size:14px; background:rgba(0,0,0,0.5); padding:5px 15px; border-radius:20px;"></div>
+</div>
+
+    <nav class="bottom-nav">
+        <a href="sug.html" class="nav-item">👥<span>Friends</span></a>
+        <a href="group.html" class="nav-item"><img src="https://cdn-icons-png.flaticon.com/512/615/615075.png"><span>Group</span></a>
+        <a href="page.html" class="nav-item">📝<span>Page</span></a>
+        <a href="live.html" class="nav-item"><img src="https://cdn-icons-png.flaticon.com/512/4404/4404094.png"><span>Live</span></a>
+
+    </nav>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// --- Configuration ---
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+// Env variables တွေကို ရိုးရိုး variable အနေနဲ့ပဲ (သို့မဟုတ်) API ခေါ်တဲ့နေရာမှာ တိုက်ရိုက်သုံးပါ
+const IMGBB_KEY = 'YOUR_IMGBB_KEY'; 
+const BUNNY_STORAGE = 'YOUR_BUNNY_STORAGE_NAME';
+const BUNNY_KEY = 'YOUR_BUNNY_API_KEY';
+
+// --- Auth Functions ---
+async function loginWithGoogle() {
+    try {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin }
+        });
+        if (error) throw error;
+    } catch (error) {
+        alert("Login Error: " + error.message);
+    }
+}
+
+function showPhoneLogin() {
+    document.getElementById('phoneLoginModal').style.display = 'flex';
+}
+
+function closePhoneLogin() {
+    document.getElementById('phoneLoginModal').style.display = 'none';
+}
+
+async function sendOTP() {
+    const phone = "+959" + document.getElementById('phoneNumber').value.trim();
+    try {
+        const { error } = await supabase.auth.signInWithOtp({ phone });
+        if (error) throw error;
+        document.getElementById('otpSection').style.display = 'block';
+        alert("OTP ပို့ပြီးပါပြီ");
+    } catch (error) {
+        alert("Error: " + error.message);
+    }
+}
+
+async function verifyOTP() {
+    const phone = "+959" + document.getElementById('phoneNumber').value.trim();
+    const token = document.getElementById('otpCode').value.trim();
+    try {
+        const { error } = await supabase.auth.verifyOtp({
+            phone, token, type: 'sms'
+        });
+        if (error) throw error;
+        closePhoneLogin();
+        alert("Login အောင်မြင်ပါတယ်");
+    } catch (error) {
+        alert("OTP မှားနေပါတယ်");
+    }
+}
+
+// --- Main App Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+    // Auth State ပြောင်းလဲမှုကို စောင့်ကြည့်
+    supabase.auth.onAuthStateChange((event, session) => {
+        const user = session?.user;
+        const userNameElement = document.getElementById('userNameDisplay');
+        
+        if (userNameElement) {
+            userNameElement.innerText = user ? 
+                (user.user_metadata.full_name || user.phone || 'User') : 'Guest';
+        }
+
+        // Post များကို Load လုပ်မယ်
+        if (typeof loadPosts === 'function') {
+            loadPosts('health_posts'); 
+        }
+    });
+});
+
+
+</script>
+    <script>
+        function previewMedia(input) {
+            const box = document.getElementById('mediaPreviewBox');
+            const file = input.files[0];
+            if (file) {
+                box.style.display = 'block';
+                const url = URL.createObjectURL(file);
+                if (file.type.startsWith('video/')) {
+                    box.innerHTML = `<video src="${url}" style="width:100%; border-radius:8px;" controls muted></video>`;
+                } else {
+                    box.innerHTML = `<img src="${url}" style="width:100%; border-radius:8px;">`;
+                }
+            }
+        }
+
+        function clearPreview() {
+            const box = document.getElementById('mediaPreviewBox');
+            box.style.display = 'none';
+            box.innerHTML = '';
+            document.getElementById('mediaInput').value = '';
+        }
+    </script>
+
+    <script>
+    // targetPageId ကို သတ်မှတ်ထားခြင်း
+    var targetPageId = "health_posts";
+    window.targetPageId = targetPageId;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Firebase Auth အခြေအနေကို စောင့်ကြည့်မယ်
+        </script>
+        <script>
+    const MAIN_POST_TABLE = "health_posts"; 
+
+</script>
+
+
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
