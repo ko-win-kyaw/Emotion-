@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmotioN - Profile</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        :root { --purple: #800080; --bg: #f0f2f5; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pyidaungsu', sans-serif; }
+        body { background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 65px 15px 100px 15px; }
+
+        .global-header { position: fixed; top: 0; width: 100%; height: 55px; background-color: var(--purple); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .logo { display: flex; align-items: center; }
+        .e-box { width: 35px; height: 35px; position: relative; display: flex; justify-content: center; align-items: center; margin-right: 5px; }
+        .e-box::before { content: ""; position: absolute; inset: 0; border: 2px solid white; border-right: none; border-radius: 5px 10px 10px 5px; }
+        .e-letter { font-size: 22px; font-weight: 800; color: #f3b64d; }
+        .logo-text { font-size: 20px; font-weight: 700; color: white; }
+
+        .profile-card { background: white; width: 100%; max-width: 400px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .cover-photo { width: 100%; height: 160px; background: #ddd; position: relative; }
+        .cover-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .btn-cover { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 5px 12px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+
+        .profile-info { display: flex; align-items: flex-end; padding: 0 15px 15px; margin-top: -50px; }
+        .avatar-box { position: relative; width: 100px; height: 100px; }
+        .avatar-box img { width: 100%; height: 100%; border-radius: 50%; border: 4px solid white; background: #eee; object-fit: cover; }
+        .btn-avatar { position: absolute; bottom: 0; right: 0; background: var(--purple); color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid white; cursor: pointer; }
+
+        .card { background: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; max-width: 400px; margin-top: 10px; }
+        .grid-item { width: 100%; aspect-ratio: 1/1; background: #f0f0f0; overflow: hidden; border-radius: 4px; border: 1px solid #eee; }
+        .grid-item img, .grid-item video { width: 100%; height: 100%; object-fit: cover; }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 60px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; z-index: 2000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #666; font-size: 10px; }
+        .nav-item img { width: 22px; height: 22px; margin-bottom: 4px; }
+        .nav-item.active { color: var(--purple); font-weight: bold; }
+
+        .info-card { background: #fff; padding: 15px; border-radius: 12px; width: 100%; max-width: 400px; margin-bottom: 20px; font-size: 13px; }
+        #status { display: none; color: var(--purple); font-weight: bold; margin: 10px 0; text-align: center; }
+        
+        .apply-grid { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-bottom: 20px; }
+        .apply-card { flex: 1; padding: 15px; border-radius: 12px; color: white; text-align: center; }
+        .gold-card { background: linear-gradient(45deg, #ffd700, #daa520); }
+        .crown-card { background: linear-gradient(45deg, #800080, #4b0082); }
+        .apply-card button { margin-top: 8px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 10px; }
+.crown-bg { background: linear-gradient(45deg, #7b2ff7, #f107a3); color: white; border-radius: 4px; }
+.gold-bg { background: linear-gradient(45deg, #7b2ff7, #f107a3); color: white; border-radius: 4px; }
+.badge-official { font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+/* Gallery Container */
+.post-gallery {
+    display: grid;
+    gap: 5px;
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* ပုံအရေအတွက်အလိုက် Grid Layout ပြောင်းလဲခြင်း */
+.gallery-1 { grid-template-columns: 1fr; }
+.gallery-2 { grid-template-columns: 1fr 1fr; }
+.gallery-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 200px 200px; }
+.gallery-4 { grid-template-columns: 1fr 1fr; }
+
+.gallery-item {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.gallery-item:hover {
+    opacity: 0.9;
+}
+
+/* Video အားလုံးအတွက် Standard Style */
+.post-video {
+    width: 100%;
+    border-radius: 8px;
+    background: #000;
+    max-height: 400px;
+}
+
+</style>
+        <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <header class="global-header">
+        <div class="logo">
+            <div class="e-box"><span class="e-letter">E</span></div>
+            <div class="logo-text">m</div>
+        </div>
+        <div class="header-tools" style="display: flex; align-items: center; gap: 15px;font-size: 22px;">
+            <a href="sug.html" style="text-decoration:none;">👥</a>
+            <a href="noti.html" style="text-decoration:none;">🔔</a>
+            <button id="langBtn" style="background: white; border: 1px solid white; border-radius: 4px; padding: 2px 8px; color: purple; font-weight: bold; cursor: pointer;font-size: 18px;" onclick="toggleLanguage()">E/မြ</button>
+        </div>
+    </header>
+
+    <div class="profile-card">
+        <div class="cover-photo">
+            <img src="https://via.placeholder.com/800x300?text=No+Cover" id="userCover">
+            <label for="coverIn" class="btn-cover" data-lang="edit_cover">📷 Edit Cover</label>
+            <input type="file" id="coverIn" hidden onchange="doUpload(this, 'cover')">
+        </div>
+
+        <div class="profile-info">
+            <div class="avatar-box">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar">
+                <label for="avatarIn" class="btn-avatar">📷</label>
+                <input type="file" id="avatarIn" hidden onchange="doUpload(this, 'avatar')">
+            </div>
+            <div class="name-box" style="margin-left: 10px;">
+                <h3 id="pName">Loading...</h3>
+                <p style="font-size: 12px; color: gray;" data-lang="user_tier">Normal User</p>
+            </div>
+        </div>
+        <div id="status" data-lang="uploading">ပုံတင်နေပါသည်...</div>
+    </div>
+
+    <div class="card">
+        <textarea id="postContent" rows="3" data-lang-placeholder="post_placeholder" placeholder=" ဗဟုသုတများ မျှဝေပါ..." style="width:100%; border-radius:8px; padding:10px; border:1px solid #ddd;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <input type="file" id="mediaInput" accept="image/*,video/*" style="display:none;" onchange="previewMedia(this)">
+            <div style="background-color: #f33; width:100%; color: #fff; border-radius: 8px; text-align: center; padding: 5px; font-size: 12px;" data-lang="video_limit">
+                👋 ဗီဒီယို 20mb သာတင်လို့ရသည် 🌍</div>
+            <label for="mediaInput" class="upload-label" style="background:#eee; padding:10px; border-radius:5px; cursor:pointer; flex:1; text-align:center;" data-lang="select_media">📷 ပုံ/ဗီဒီယို ရွေးရန်</label>
+            <button id="btnPost" class="btn-post" style="flex:1; margin:0; background: var(--purple); color:white; border:none; border-radius:5px;" onclick="uploadAndPost()" data-lang="post_btn">တင်မည်</button>
+        </div>
+        <div id="newsFeed" class="grid-container"></div>
+
+    </div>
+<div class="apply-grid">
+    <div class="apply-card gold-card">
+        <h5 data-lang="gold_title">ရွှေရောင် $ အကောင့်</h5>
+        <p style="font-size: 10px;" data-lang="gold_desc">Apply for Gold Tier</p>
+        <button onclick="requestUpgrade('gold')" data-lang="apply_btn">လျှောက်ထားရန်</button>
+    </div>
+    <div class="apply-card crown-card">
+        <h5 data-lang="crown_title">ခရမ်းရောင် Crown</h5>
+        <p style="font-size: 10px;" data-lang="crown_desc">Lifetime Membership</p>
+        <button onclick="requestUpgrade('crown')" data-lang="apply_btn">လျှောက်ထားရန်</button>
+    </div>
+</div>
+    <div class="info-card">
+        <h4 data-lang="policy_header">📢 App Policy & Guarantees</h4>
+        <div id="policyMyan" class="policy-text">
+            ဤ App သည် ဘက်လိုက်ခြင်းမရှိသော Social Media ဖြစ်ပါသည်။ နိုင်ငံအတွင်း သတင်းမှန်များရရှိရေး၊ ပညာရေး၊ ကျန်းမာရေး၊ စိုက်ပျိုးရေးနှင့် လူမှုရေးဗဟုသုတများ မျှဝေရန် ရည်ရွယ်ပါသည်။ အသုံးပြုသူတိုင်း၏ Data ကို ပေါက်ကြားမှုမရှိစေရန် အာမခံပါသည်။ 
+            <br>• <b>Normal:</b> 20MB Media, 3000+ Suggestions.No business post.
+            <br>• <b>Gold (💰):</b> 50MB Media, 3000+ Suggestions, Livestream (No Replay), Business Posts.Page create.
+            <br> <b>Crown (👑):</b> 50MB Media, 10000+ Suggestions, Livestream (No reply),Lifetime Access,No business.Page create 
+            <br>⚠️ လူမျိုးရေး၊ ဘာသာရေး အမုန်းစကားများ လုံးဝ(လုံးဝ) ခွင့်မပြုပါ။ Likes 1000 မပြည့်သော Video များကို ၁ နှစ်အကြာတွင် Auto ဖျက်သိမ်းပါမည်။
+
+        </div>
+        <div id="policyEng" class="policy-text" style="display:none;">
+             EmotioN is a neutral social platform for sharing authentic news, education, health, and social knowledge. We guarantee user data privacy.
+                        <br>• <b>Normal:</b> 20MB Media, 3000+ Suggestions,No business.
+            <br>• <b>Gold (💰):</b> 60MB Media, 3000+ Suggestions, Livestream (No Replay), Business Posts,Page create.
+            <br> <b>Crown (👑):</b> 60MB Media, 10000+ Suggestions, Livestream (No reply),Lifetime Access,No business,Page create.<br>
+            Hate speech regarding race or religion is strictly prohibited. Videos with less than 1000 likes will be auto-deleted after one year.
+
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+        <h4 style="text-align: center; margin-bottom: 12px;" data-lang="feedback_title">📝 App Feedback ပေးရန်</h4>
+        <textarea id="feedbackMsg" style="width:100%; border-radius:8px; padding:10px; border:1px solid #ddd;" data-lang-placeholder="feedback_placeholder" placeholder="App အသုံးပြုရတာ အဆင်ပြေရဲ့လား?"></textarea>
+        <button onclick="submitFeedback()" style="width:100%; margin-top:10px; padding:10px; background:var(--purple); color:white; border:none; border-radius:5px;" data-lang="send_btn">ပို့မည်</button>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="user.html" class="nav-item">
+            🏡<span data-lang="nav_user">User</span>
+        </a>
+        <a href="group.html" class="nav-item">
+           🧑‍🤝‍🧑👯‍♀️ <span data-lang="nav_group">Group</span>
+        </a>
+        <a href="chat.html" class="nav-item">
+            💬<span data-lang="nav_chat">Chat</span>
+        </a>
+        <a href="live.html" class="nav-item">
+            📹<span data-lang="nav_live">Live</span>
+        </a>
+    </nav>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const BUNNY_KEY = import.meta.env.VITE_BUNNY_KEY;
+const BUNNY_STORAGE = import.meta.env.VITE_BUNNY_STORAGE;
+const IMGBB_KEY = import.meta.env.VITE_IMGBB_KEY;
+
+const SUPABASE_URL = window.location.origin + "/api/supabase";
+const SUPABASE_KEY = "dummy-key"; // dummy key တစ်ခုခုထည့်ထားရုံပါပဲ (Proxy က အမှန်နဲ့ အစားထိုးပေးမှာမို့လို့ပါ)
+
+const { createClient } = supabase;
+// query string တွေပါအောင် / ကိုဖြတ်ပြီး endpoint ချိန်ရပါတယ်
+const _supabase = createClient(window.location.origin, SUPABASE_KEY, {
+  db: { schema: 'public' },
+  global: { headers: { apikey: SUPABASE_KEY } }
+});
+
+async function uploadAndPost() {
+    const text = document.getElementById('postContent').value.trim();
+    const fileInput = document.getElementById('mediaInput');
+    const files = fileInput.files; 
+    const btn = document.getElementById('btnPost');
+
+    try {
+        const { data: { user } } = await _supabase.auth.getUser();
+        if (!user) return alert("Login အရင်ဝင်ပါ Senior!");
+
+        const { data: profile } = await _supabase.from('users').select('is_gold, is_crown').eq('id', user.id).single();
+        const isPremium = profile?.is_gold || profile?.is_crown;
+
+        const MAX_FILES = isPremium ? 10 : 1;
+        const MAX_SIZE_MB = isPremium ? 50 : 20;
+        const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+        if (!text && files.length === 0) return alert("စာ သို့မဟုတ် ဖိုင်ထည့်ပါ");
+        if (files.length > MAX_FILES) return alert(`Limit ကျော်နေပါသည်။ (Max: ${MAX_FILES} files)`);
+
+        for (let file of files) {
+            if (file.size > MAX_SIZE_BYTES) return alert(`ဖိုင်ဆိုဒ် ကြီးလွန်းပါသည် (${MAX_SIZE_MB}MB ထက်မကျော်ရ)`);
+        }
+
+        btn.disabled = true; 
+        btn.innerText = "တင်နေပါသည်...";
+
+        let mediaUrls = [];
+        let finalMediaType = "image"; 
+
+        for (let file of files) {
+            const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+            
+            if (file.type.startsWith('video/')) {
+                finalMediaType = 'video';
+                const res = await fetch(`/api/bunny/${fileName}`, { method: 'PUT', body: file });
+                if (res.ok) mediaUrls.push(BUNNY_STORAGE_URL + fileName);
+            } else {
+                const fd = new FormData();
+                fd.append('image', file);
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: 'POST', body: fd });
+                const d = await res.json();
+                if (d.success) mediaUrls.push(d.data.url);
+            }
+        }
+
+        // Database ထဲမှာ Comma နဲ့ပဲသိမ်းသိမ်း၊ JSON နဲ့ပဲသိမ်းသိမ်း split နဲ့ပြန်ခွဲရတာ တူတူပါပဲ
+        // ဒီမှာတော့ Senior ရဲ့ လက်ရှိ database structure မပျက်အောင် comma နဲ့ပဲ ဆက်ထားပေးပါတယ်။
+        await _supabase.from('health_posts').insert([{
+            uid: user.id,
+            author: user.user_metadata.full_name || "User",
+            text: text,
+            media_url: mediaUrls.join(','), 
+            media_type: finalMediaType
+        }]);
+
+        alert("Post တင်ပြီးပါပြီ!");
+        location.reload();
+
+    } catch (e) { alert(e.message); }
+    finally { btn.disabled = false; btn.innerText = "တင်မည်"; }
+}
+
+// --- ၆။ LOAD POSTS (Gallery-3 Logic ပါဝင်သည်) ---
+async function loadMyPosts(viewId, currentUserId) {
+    try {
+        const { data: posts, error } = await _supabase
+            .from('health_posts')
+            .select('*')
+            .eq('uid', viewId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        const container = document.getElementById('newsFeed');
+        if (!posts || posts.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:20px; color:gray;">ပို့စ်မရှိသေးပါ</p>';
+            return;
+        }
+
+        container.innerHTML = posts.map(post => {
+            const mediaFiles = post.media_url ? post.media_url.split(',') : [];
+            const fileCount = mediaFiles.length;
+            let mediaHTML = "";
+
+            if (post.media_type === 'video' && fileCount > 0) {
+                mediaHTML = `<video src="${mediaFiles[0]}" class="post-video" controls></video>`;
+            } else if (post.media_type === 'image' && fileCount > 0) {
+                // ပြင်ဆင်ထားသော Grid Logic
+                const gridClass = fileCount === 1 ? 'gallery-1' : 
+                                   fileCount === 2 ? 'gallery-2' : 
+                                   fileCount === 3 ? 'gallery-3' : 'gallery-4';
+                
+                mediaHTML = `<div class="post-gallery ${gridClass}">`;
+                mediaFiles.forEach((url, index) => {
+                    if (index < 4) {
+                        mediaHTML += `<img src="${url}" class="gallery-item" onclick="viewFullImage('${url}')">`;
+                    }
+                });
+                mediaHTML += `</div>`;
+            }
+
+            return `
+                <div class="card post-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="color:var(--purple);">${escapeHtml(post.author)}</b>
+                        ${currentUserId === post.uid ? 
+                            `<button onclick="deleteMyPost('${post.id}', '${post.media_url}', '${post.media_type}', '${post.uid}')" style="background:none; border:none; cursor:pointer;">🗑️</button>` : ''}
+                    </div>
+                    <p style="margin: 10px 0; font-size: 14px;">${escapeHtml(post.text)}</p>
+                    ${mediaHTML}
+                    <div style="margin-top:10px; font-size:11px; color:gray; text-align:right;">
+                        ${new Date(post.created_at).toLocaleString()}
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+// --- Preview Media (Multiple Support) ---
+function previewMedia(input) {
+    const files = input.files;
+    let previewArea = document.getElementById('mediaPreview');
+    if (!previewArea) {
+        previewArea = document.createElement('div');
+        previewArea.id = 'mediaPreview';
+        previewArea.style = "display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;";
+        input.parentElement.after(previewArea);
+    }
+    previewArea.innerHTML = ""; // Reset old previews
+
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const item = document.createElement('div');
+            item.style = "width:60px; height:60px; border-radius:5px; overflow:hidden; border:1px solid purple; position:relative;";
+            item.innerHTML = file.type.startsWith('image/') 
+                ? `<img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;">`
+                : `<video src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;"></video>`;
+            previewArea.appendChild(item);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+async function initProfile() {
+    try {
+        // ၁။ User Authentication စစ်ဆေးခြင်း
+        const { data: { user }, error: authError } = await _supabase.auth.getUser();
+
+        // User မရှိရင် သို့မဟုတ် Error တက်ရင် login ဆီ ပို့မယ်
+        if (authError || !user) {
+            console.error("Auth Error:", authError);
+            window.location.href = "login.html";
+            return; // <--- အောက်က logic တွေ ဆက်အလုပ်မလုပ်အောင် တားဆီးခြင်း
+        }
+
+        // ၂။ URL ကနေ ID ဖတ်ခြင်း (ကိုယ်တိုင်ကြည့်တာလား၊ သူများ profile ကြည့်တာလား ခွဲခြားရန်)
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewId = urlParams.get('id') || user.id;
+
+        // ၃။ Database ကနေ Profile အချက်အလက်ယူခြင်း
+        const { data: profile, error: dbError } = await _supabase
+            .from('users')
+            .select('*')
+            .eq('id', viewId)
+            .single();
+
+        if (dbError) {
+            console.warn("Profile data load error:", dbError.message);
+        }
+
+        // ၄။ UI ကို Update လုပ်ခြင်း (Profile ရှိမှ လုပ်မယ်)
+        if (profile) {
+            updateUI(profile);
+        }
+
+        // ၅။ ပို့စ်များကို Load လုပ်ခြင်း
+        // viewId = ဘယ်သူ့ပို့စ်တွေလဲ၊ user.id = လက်ရှိကြည့်နေသူ (Delete ခလုတ်ပြမပြ စစ်ရန်)
+        await loadMyPosts(viewId, user.id);
+
+    } catch (err) {
+        console.error("Unexpected error in initProfile:", err);
+    }
+}
+
+// --- ၂။ UI UPDATE (Badges & Info) ---
+function updateUI(data) {
+    let badgeHTML = "";
+    if (data.is_gold) badgeHTML += ' <span style="color:#ffd700; font-weight:bold; margin-left:5px;">💰</span>';
+    if (data.is_crown) badgeHTML += ' <span style="color:#800080; margin-left:5px;">👑</span>';
+
+    document.getElementById('pName').innerHTML = (data.display_name || "User") + badgeHTML;
+    if (data.avatar_url) document.getElementById('userAvatar').src = data.avatar_url;
+    if (data.cover_url) document.getElementById('userCover').src = data.cover_url;
+
+    const tierLabel = document.querySelector('[data-lang="user_tier"]');
+    if (tierLabel) {
+        if (data.is_crown && data.is_gold) tierLabel.innerText = "Premium Elite Member";
+        else if (data.is_crown) tierLabel.innerText = "Crown Member";
+        else if (data.is_gold) tierLabel.innerText = "Gold Tier User";
+        else tierLabel.innerText = "Normal User";
+    }
+}
+// --- ၄။ PROFILE/COVER CHANGE LOGIC ---
+async function doUpload(input, type) {
+    if (!input.files[0]) return;
+    const status = document.getElementById('status');
+    status.style.display = 'block';
+    
+    const formData = new FormData();
+    formData.append('image', input.files[0]);
+    
+    try {
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: 'POST', body: formData });
+        const d = await res.json();
+        
+        if (d.success) {
+            const { data: { user } } = await _supabase.auth.getUser();
+            const field = type === 'avatar' ? 'avatar_url' : 'cover_url';
+            
+            await _supabase.from('users').update({ [field]: d.data.url }).eq('id', user.id);
+            alert("Updated Successfully!");
+            location.reload();
+        }
+    } catch (e) { alert(e.message); }
+    finally { status.style.display = 'none'; }
+}
+// --- ၅။ DELETE POST (Security + Storage Cleanup) ---
+async function deleteMyPost(postId, mediaUrl, mediaType, postUid) {
+    try {
+        // ၁။ လက်ရှိ Login ဝင်ထားတဲ့ User ကို ယူမယ်
+        const { data: { user } } = await _supabase.auth.getUser();
+
+        // ၂။ လုံခြုံရေး စစ်ဆေးခြင်း (Authorization Check)
+        // Post တင်ထားသူရဲ့ ID နဲ့ လက်ရှိကြည့်နေသူရဲ့ ID မတူရင် ဖျက်ခွင့်မပေးဘူး
+        if (!user || user.id !== postUid) {
+            alert("⚠️ သင်ပိုင်ဆိုင်သော ပို့စ်မဟုတ်သဖြင့် ဖျက်၍မရပါ Senior!");
+            return;
+        }
+
+        // ၃။ အတည်ပြုချက် တောင်းခြင်း
+        if (!confirm("ဒီပို့စ်ကို အပြီးတိုင် ဖျက်မှာ သေချာလား Senior?")) return;
+
+        // ၄။ Storage Cleanup (ဗီဒီယိုဆိုရင် Bunny ကနေ အရင်ဖျက်မယ်)
+        if (mediaType === 'video' && mediaUrl) {
+            const fileName = mediaUrl.split('/').pop();
+            // Bunny Storage API ကို Proxy ကနေတစ်ဆင့် လှမ်းဖျက်ခြင်း
+            const res = await fetch(`/api/bunny/${fileName}`, { method: 'DELETE' });
+            if (!res.ok) console.warn("Media file deletion failed but proceeding with DB delete.");
+        }
+
+        // ၅။ Database ထဲက Post ကို ဖျက်ခြင်း
+        const { error } = await _supabase
+            .from('health_posts')
+            .delete()
+            .eq('id', postId)
+            .eq('uid', user.id); // Security ထပ်ဆင့်မြှင့်ဖို့ uid ပါ ထည့်စစ်တာ ပိုကောင်းပါတယ်
+
+        if (error) throw error;
+
+        alert("🗑️ ပို့စ်ကို ဖျက်လိုက်ပါပြီ!");
+        
+        // Page ကို reload မလုပ်ဘဲ UI ကနေ ပျောက်သွားအောင်လုပ်တာ ပိုချောမွေ့ပါတယ်
+        // ဒါပေမယ့် လက်ရှိ logic အရ reload လုပ်ခိုင်းထားပါတယ်
+        location.reload();
+
+    } catch (e) {
+        console.error("Delete Error:", e.message);
+        alert("Error: " + e.message);
+    }
+}
+function clearPreview() {
+    document.getElementById('mediaInput').value = "";
+    if (document.getElementById('mediaPreview')) document.getElementById('mediaPreview').remove();
+}
+// --- ၁။ UPGRADE REQUEST LOGIC (Gold/Crown လျှောက်ရန်) ---
+async function requestUpgrade(type) {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return alert("Login အရင်ဝင်ပါ");
+
+    if (!confirm(`${type.toUpperCase()} Tier အတွက် လျှောက်ထားမှာ သေချာပါသလား?`)) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = "Wait...";
+
+    try {
+        const { error } = await _supabase.from('upgrade_requests').insert([{
+            uid: user.id,
+            email: user.email,
+            request_type: type,
+            status: 'pending',
+            display_name: document.getElementById('pName').innerText
+        }]);
+
+        if (error) throw error;
+        alert("လျှောက်ထားမှု အောင်မြင်ပါသည်။ Admin အတည်ပြုချက်ကို စောင့်ဆိုင်းပေးပါ။");
+        btn.innerText = "Pending...";
+    } catch (e) {
+        alert("Error: " + e.message);
+        btn.disabled = false;
+        btn.innerText = "လျှောက်ထားရန်";
+    }
+}
+
+// --- ၂။ FEEDBACK SUBMIT LOGIC ---
+async function submitFeedback() {
+    const msg = document.getElementById('feedbackMsg').value.trim();
+    const { data: { user } } = await _supabase.auth.getUser();
+    
+    if (!msg) return alert("စာအရင်ရိုက်ပါဦးဗျ");
+
+    const feedbackBtn = event.target;
+    feedbackBtn.disabled = true;
+    feedbackBtn.innerText = "...";
+
+    try {
+        const { error } = await _supabase.from('feedbacks').insert([{
+            uid: user ? user.id : null,
+            user_name: user ? (user.user_metadata.full_name || "User") : "Guest",
+            message: msg,
+            device_info: navigator.userAgent
+        }]);
+
+        if (error) throw error;
+        document.getElementById('feedbackMsg').value = "";
+        alert("ပို့ပြီးပါပြီ။ အကြံပြုချက်အတွက် ကျေးဇူးပါ!");
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        feedbackBtn.disabled = false;
+        feedbackBtn.innerText = "ပို့မည်";
+    }
+}
+// ၁။ ဘာသာစကား Dictionary (စာသားအားလုံးကို ဒီမှာ စုသိမ်းပါ)
+const translations = {
+    my: {
+        edit_cover: "📷 Cover ပုံပြောင်းရန်",
+        user_tier: "သာမန်အသုံးပြုသူ",
+        post_placeholder: "ဗဟုသုတများ မျှဝေပါ...",
+        select_media: "📷 ပုံ/ဗီဒီယို ရွေးရန်",
+        post_btn: "တင်မည်",
+        gold_title: "ရွှေရောင် $ အကောင့်",
+        gold_desc: "ရွှေရောင်အဆင့်သို့ မြှင့်တင်ရန်",
+        apply_btn: "လျှောက်ထားရန်",
+        feedback_title: "📝 App Feedback ပေးရန်",
+        feedback_placeholder: "App အသုံးပြုရတာ အဆင်ပြေရဲ့လား?",
+        send_btn: "ပို့မည်",
+        nav_profile: "ပရိုဖိုင်"
+    },
+    en: {
+        edit_cover: "📷 Edit Cover",
+        user_tier: "Normal User",
+        post_placeholder: "Share your knowledge...",
+        select_media: "📷 Select Media",
+        post_btn: "Post",
+        gold_title: "Gold $ Account",
+        gold_desc: "Apply for Gold Tier",
+        apply_btn: "Apply Now",
+        feedback_title: "📝 Give App Feedback",
+        feedback_placeholder: "Is the app working well?",
+        send_btn: "Send",
+        nav_profile: "Profile"
+    }
+};
+
+function toggleLanguage() {
+    // လက်ရှိ ဘာသာစကားကို Policy Card ရဲ့ display ကိုကြည့်ပြီး ခွဲခြားမယ်
+    const policyEng = document.getElementById('policyEng');
+    const policyMyan = document.getElementById('policyMyan');
+    
+    // အကယ်၍ English ပေါ်နေရင် (လက်ရှိက English ဖြစ်နေရင်) Myanmar ပြောင်းမယ်၊ မဟုတ်ရင် English ပြောင်းမယ်
+    const isCurrentEnglish = policyEng.style.display === 'block';
+    const targetLang = isCurrentEnglish ? 'my' : 'en';
+
+    // ၂။ Policy Text များကို Toggle လုပ်ခြင်း
+    policyEng.style.display = targetLang === 'en' ? 'block' : 'none';
+    policyMyan.style.display = targetLang === 'my' ? 'block' : 'none';
+
+    // ၃။ UI Elements များအားလုံးကို Dictionary ထဲကအတိုင်း လဲလှယ်ခြင်း
+    const elements = document.querySelectorAll('[data-lang]');
+    elements.forEach(el => {
+        const key = el.getAttribute('data-lang');
+        if (translations[targetLang][key]) {
+            el.innerText = translations[targetLang][key];
+        }
+    });
+
+    // ၄။ Placeholder (Input field တွေ) ကိုပါ လဲလှယ်ခြင်း
+    const inputs = document.querySelectorAll('[data-lang-placeholder]');
+    inputs.forEach(input => {
+        const key = input.getAttribute('data-lang-placeholder');
+        if (translations[targetLang][key]) {
+            input.placeholder = translations[targetLang][key];
+        }
+        localStorage.setItem('preferred_lang', targetLang);
+
+    });
+
+    // ၅။ Button စာသားကိုပါ Update လုပ်ခြင်း (Optional)
+    const langBtn = document.getElementById('langBtn');
+    if (langBtn) {
+        langBtn.innerText = targetLang === 'en' ? 'မြ/E' : 'E/မြ';
+    }
+}
+
+// ပုံကို အကြီးကြည့်ရန်
+function viewFullImage(url) {
+    if(url) window.open(url, '_blank');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+initProfile();
+</script>
+</html>
