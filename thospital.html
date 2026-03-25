@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>T Hospital</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding-top: 220px; 
+            font-family: sans-serif; 
+            background: #f4f7f6; 
+        }
+
+        /* လေယာဉ် Animation */
+        .ambulance-run {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99;
+    font-size: 50px;
+    pointer-events: none;
+    /* မြန်လွန်းရင် 2s ကို 4s သို့မဟုတ် 5s ပြောင်းလိုက်ပါ */
+    animation: driveFast 4s linear infinite; 
+    display: inline-block;
+    user-select: none;
+}
+
+@keyframes driveFast {
+    0% {
+        /* rotate(210deg) သည် ကားခေါင်းကို ဘယ်ဘက်အောက်သို့ ဦးတည်စေပါသည် */
+        transform: translate(100vw, -100px) rotate(90deg); 
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        /* အဆုံးမှတ်မှာလည်း တူညီသော rotate တန်ဖိုးကို ထည့်ပေးရပါမည် */
+        transform: translate(-150px, 140vh) rotate(-20deg);
+        opacity: 0;
+    }
+}
+
+
+        /* Fixed Header */
+        .fixed-header { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            z-index: 1000;
+            background: white; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+
+        .marquee-container { 
+            background: red; 
+            color: white; 
+            padding: 0; 
+            height: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        .video-wrapper { 
+            position: relative; 
+            width: 100%; 
+            height: 180px; 
+            background: #000; 
+            overflow: hidden; 
+        }
+
+        #myVideo { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            pointer-events: none; 
+            display: block;
+        }
+
+        /* Welcome Overlay */
+        #welcomeOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .welcome-box {
+            background: white;
+            padding: 30px;
+            border-radius: 25px;
+            width: 80%;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .start-btn {
+            background: linear-gradient(45deg, #28a745, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            margin-top: 25px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .buy-btn {
+            position: absolute; top: 10px; left: 10px; z-index: 1100;
+            padding: 4px 10px; background: #28a745; color: white;
+            text-decoration: none; border-radius: 50px; font-size: 12px;
+            border: 2px solid white; font-weight: bold;
+        }
+
+        .page { padding: 10px; }
+        table { width:100%; border-collapse: collapse; margin-top:15px; background: white; }
+        th, td { padding:12px; border:1px solid #dee2e6; font-size: 14px; text-align: center; }
+        .emergency-contact-box { padding: 15px; background: #fff; border-radius: 15px; margin: 15px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .call-btn { display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 10px; text-decoration: none; border-radius: 10px; color: white; }
+        .fire { background-color: #e67e22; }
+        .ambulance { background-color: #e74c3c; }
+        .police { background-color: #3498db; }
+    </style>
+</head>
+<body>
+
+<div id="welcomeOverlay">
+    <div class="welcome-box">
+        <h2 style="margin: 0; color: #d63031;">🏥 မင်္ဂလာပါ</h2>
+        <p style="color: #636e72; margin-top: 10px;">Public Hospital ကျန်းမာရေး ဝန်ဆောင်မှုများကို ကြည့်ရှုရန်</p>
+        <button class="start-btn" id="startBtn">အသုံးပြုမည်</button>
+    </div>
+</div>
+
+<span class="ambulance-run" id="planeAnim">🛩️</span>
+
+<div class="fixed-header">
+    <div class="marquee-container">
+        <marquee scrollamount="5" style="margin:0;">🚑..သင်္ကန်းကျွန်းစံပြဆေးရုံကြီး✚</marquee>
+    </div>
+    <div class="video-wrapper">
+        <a href="tel:09675990009" class="buy-btn">ဝယ်မည်</a>
+        <video id="myVideo" muted loop playsinline autoplay>
+            <source src="https://www.dropbox.com/scl/fi/w3uvn265nwzombk4u5b27/h1.mp4?rlkey=d07ixg37ipz3apr8kojbdqba8&st=pa1q6vys&raw=1" type="video/mp4">
+        </video>
+    </div>
+</div>
+
+<section class="page">
+    <div style="background:linear-gradient(45deg, #007bff, #00d4ff); color:white; padding:30px; border-radius:15px; text-align:center; margin-bottom:20px;">
+        <h1 style="margin:0;">🏥သင်္ကန်းကျွန်း
+ပြည်သူ့ ဆေးရုံကြီး</h1>
+        <p style="margin:5px 0 0 0;">လူသားအားလုံး ကျန်းမာဖို့ အစဉ်တစိုက် ကြိုးပမ်းစို့။</p>
+    </div>
+
+    <div style="background-color: #ff4; text-align: center; padding: 10px; border-radius: 10px; font-weight: bold;"> ပြည်သူ့ဆေးရုံတိုင်း စနေ ၊ တနင်္ဂနွေ ပြင်ပလူနာမကြည့်ပါ။ နံနက်ပိုင်း-၉နာရီမှ ၁၂နာရီထိ ၊ မွန်းလွဲပိုင်း-၁နာရီမှ ၃နာရီ /၂နာရီမှ ၄နာရီ ထိလူနာကြည့်ပါသည်။  
+    </div>
+
+    <div class="card" style="background:white; border-radius:12px; padding:0px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+        <h3 style="color:#007bff; text-align: center ;margin-bottom:-10px;">📅 ပြင်ပလူနာဌာန နေ့ရက်အချိန်းဇယား</h3>
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse: collapse; margin-top:15px; text-align: center;">
+                <thead>
+                    <tr style="background:#e9ecef; text-align: center;">
+                        <th style="padding:12px; border:1px solid #dee2e6;">ရောဂါအမျိုးအစား</th>
+                        <th style="padding:12px; border:1px solid #dee2e6;">သတ်မှတ်ရက်</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+          🩺 ကလေးအထူးကု၊  အရိုးနှင့်ထိခိုက်ဒဏ်ရာ၊ စိတ်ကျန်းမာရေး၊ 🦷သွားနှင့်ခံတွင်း၊ ဖျားနာ၊ သားဖွား</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">(ဖွင့်ရက်        အားလုံး)၉နာရီမှ ၁၂နာရီ၊ ၂နာရီမှ ၄နာရီ နှင့် ဖျားနာနှင့်သားဖွာလူနာ ၉နာရီမှ ၁၂နာရီ၊  ၁နာရီမှ ၃နာရီ 
+            </td>
+                    </tr>
+                    <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">🦴 အကြောအဆစ်နှင့်ကိုယ်လက်အင်္ဂါသန်စွမ်းရေး၊ ရင်ခေါင်းရောဂါ၊ 💊DOTSဆေးပေးရက်</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">အင်္ဂါ၊ ကြာသပတေးနေ့
+                        မွန်းလွဲပိုင်း dots ဆေးမပေးပါ </td>
+                    </tr>                    <tr style="background:#f8f9fa;">
+                       <td style="padding:12px; border: 1px solid wheat;">
+    👂🗣️
+    နား၊ နှာခေါင်း၊ လည်ချောင်း၊ အရေပြား
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">တနင်္လာ ၊ ကြာသပတေး၊ သောကြာ ၊ (အင်္ဂါအရေပြားသီးသန့် ) </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+                        🤕  ဖျားနာ၊ သားဖွား၊ မူးယစ်ဆေးစွဲ   </td></td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+                 တနင်္လာ၊      သောကြာနေ့
+                မူးယစ်ဆေး မွန်းလွဲပိုင်းမရှိပါ</td>
+                    </tr>
+                    <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+              👁️ မျက်စိ 👀</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">တနင်္လာ၊ ဗုဒ္ဓဟူး၊နှင့် သောကြာ(နံနက်) </td>
+                    </tr>
+                    <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">🧬
+အစာအိမ်နှင့် အူလမ်းကြောင်း
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+               အင်္ဂါ(နံနက်ပိုင်း)
+          တနင်္လာ၊ ကြာသပတေး (၁၂နာရီမှ ၂နာရီ)      </td>
+                    </tr>
+                                      <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+ 🐕 ခွေးကိုက်ကာကွယ်ဆေး
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;"> ဆေးရှိပါကထိုးပေးပါသည်(မသေချာ) </td>
+                    </tr>
+                            <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+ ဆီး၊ ကျောက်ကပ် ကုသ
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+              အင်္ဂါမှသောကြာထိ (ကြာသပတေး ၁၂နာရီမှ၄နာရီ) </td>
+         </tr>
+                                       <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">၊🩺✂️
+ ဆီးလမ်းကြောင်း၊ ကျောက်ကပ် ခွဲစိတ်
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+                တနင်္လာ၊            ဗုဒ္ဓဟူး </td>
+         </tr>
+                                        <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+🤦 မီးယပ် အထူးကု
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">တနင်္လာ မှ ကြာသပတေး
+               (၁နာရီ မှ ၃နာရီသာ  )       </td>
+         </tr>               
+         <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+🔪 ခွဲစိပ် အထူးကု
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">အင်္ဂါ ၊ဗုဒ္ဓဟူး </td>
+         </tr>                        
+         <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+🍭  ဆီးချို
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">သောကြာ </td>
+         </tr>    
+                 <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+ 💊 ART ဆေးပေးနေ့ 
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">ဗုဒ္ဓဟူး နံနက်ပိုင်း 
+                        </td>
+          <tr style="background:#e9ecef; text-align: center;">
+                        <th style="padding:12px; border:1px solid #dee2e6;"> အခြေစိုက်မြို့နယ်</th>
+                        <th style="padding:12px; border:1px solid #dee2e6;">☎️ ဆက်သွယ်ရမည့်ဖုန်း </th>
+                    </tr>
+                    <tr>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+          ရွှေပြည်သာမြို့နယ်
+          (ကယ်ဆယ်ရေးမီးသတ်ကားနှင့် လူနာတင်ယဉ်)
+          </td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">09 444 946 665, 09 4210 251 24
+            </td>
+                    </tr>
+                    <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">လှိုင်သာယာမြို့နယ်(ကယ်ဆယ်ရေးမီးသတ်ကားနှင့် လူနာတင်ယဉ်)</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+                            09 250 166 391 , 09 777 444 955, 09 448498612-(T Rescue ကယ်ဆယ်ရေးမီးသတ်ကား), 09 952 553 054
+</td>
+                    </tr>                    <tr style="background:#f8f9fa;">
+                       <td style="padding:12px;border: 1px solid whitesmoke;">
+တောင်ဥက္ကလာပမြို့နယ်
+လူနာတင်ယဉ်
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">09 447 222 929, 09 447 222 727</td>
+                    </tr>
+                                      <tr>
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+          သင်္ကန်းကျွန်းမြို့နယ် လူနာတင်ယဉ်
+          </td>
+                        <td style="padding:12px; border:1px solid #dee2e6;"> 09 772 988 251, 09 686 165 321
+            </td>
+                    </tr>
+                    <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;"> ရန်ကုန်မြို့ထဲ(မြို့တွင်း)
+                        </td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">09 503 5296, 09 430 231 47</td>
+                    </tr>                        <tr style="background:#f8f9fa;">
+                        <td style="padding:12px; border:1px solid #dee2e6;">
+                            အင်းစိန်(ရွာမ)
+                        </td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">09 420 294 524, 09 423 678 881</td>
+                    </tr>
+                                                    <tr style="background:#f8f9fa;">
+                       <td style="padding:12px;border: 1px solid whitesmoke;">
+တွံတေး
+မြို့နယ်
+လူနာတင်ယဉ်၊ ကယ်ဆယ်ရေးယဉ်
+</td>
+                        <td style="padding:12px; border:1px solid #dee2e6;">09 448 023 533, 09 31119537
+
+                        </td>
+                    </tr>
+                         
+         </tbody>
+            </table>
+        </div>
+    </div><br>
+        <div style="text-align: center;font-size: 30px;color: #44f;">
+        <span > 👋 သတိ-လမ်းညွှန် 👋</span>
+        </div>
+
+        <div style="font-size: 16px;color: #011;text-align: center; margin: 25px;background-color: #afa;padding: 20px;border-radius: 10px;">
+    <b>(ကျိုက္ကဆံဘက်) ဘုရားလမ်းမှတ်တိုင်အနီး - YBS ➡️ 14, 27, 60, 63 စီးပါ။
+    ဘုရားလမ်းမှတ်တိုင်အနီး - YBS ➡️ 1, 7(အဝါ), 13, 24, 62, 71, 84, 92, 96, 111, 112, 113, 114, 128 စီးပါ။        (သွေးအရေးပေါ်လိုအပ်ပါက ရွာမပရိယတ္တိစာသင်တိုက် ၊ ရွာမမှတ်တိုင် ၊ YBS➡️ 40, 142, 143 စီးပါ)
+
+</b>
+    </div>
+        <div style="font-size: 20px;color: blue;text-align: center; margin: 25px;">
+
+    </ins>
+    </div>
+        <div style="text-align: center; background:#fff3cd; border-left:5px solid #ffc107; padding:15px; border-radius:8px;">
+        <h4 style="margin:0; color:#856404;">⚠️ အရေးပေါ်ဌာန (ER)</h4>
+        <p style="margin:5px 0 0 0; font-size:14px;">အရေးပေါ်လူနာများအတွက် ၂၄ နာရီပတ်လုံး ဝန်ဆောင်မှုပေးနေပါသည်။</p>
+    </div>   
+    <div class="emergency-contact-box">
+    <h3 style="color: #d63031; text-align: center;">🆘 အရေးပေါ် ဖုန်းနံပါတ်များ</h3>
+    
+    <a href="tel:09772988251" class="call-btn fire">
+        <span>🚑</span>
+        <strong>09772988251</strong>
+    </a>
+
+    <a href="tel:09686165321" class="call-btn ambulance">
+        <span>🚑 </span>
+        <strong>09686165321</strong>
+    </a>
+
+    <a href="tel:199" class="call-btn police">
+        <span>👮 ရဲစခန်း</span>
+        <strong>199</strong>
+    </a>Website သုံးသူများသာ ဖုန်းတန်းခေါ်နိုင်မည်။
+</div>
+<div style="text-align: center;">
+<a href="index.html" class="back-btn">
+
+    <button onclick="showPage('homePage')" style=" background:#6c757d; border:none; color:white; padding:12px; border-radius:8px; width:50%;">ပင်မစာမျက်နှာသို့ ပြန်ရန်</button></a>
+
+    </div>
+
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('myVideo');
+    const startBtn = document.getElementById('startBtn');
+    const overlay = document.getElementById('welcomeOverlay');
+    const plane = document.getElementById('planeAnim');
+
+    // ခလုတ်နှိပ်သည့်အခါ လုပ်ဆောင်ချက်
+    startBtn.addEventListener('click', function() {
+        video.muted = false; 
+        video.play();
+        overlay.style.display = 'none'; // Overlay ပိတ်မည်
+        plane.style.display = 'inline-block'; // လေယာဉ် Animation စတင်မည်
+    });
+});
+</script>
+
+</body>
+</html>
