@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmotioN Live - No Replay</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        :root { --live-red: #ff4757; --glass: rgba(255, 255, 255, 0.1); --purple: #800080; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #0f0f0f; height: 100vh; overflow: hidden; color: white; }
+
+        /* Video Container */
+        .live-container { position: relative; width: 100%; height: 100vh; background: #000; }
+        #liveVideo { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Overlays Area */
+        .overlay { 
+            position: absolute; inset: 0; pointer-events: none; padding: 20px; 
+            display: flex; flex-direction: column; justify-content: space-between; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.6) 100%); 
+            z-index: 10;
+        }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; pointer-events: auto; }
+        .live-badge { background: var(--live-red); padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; text-transform: uppercase; animation: blink 1.5s infinite; }
+        .viewer-count { background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 4px; font-size: 14px; margin-left: 8px; }
+
+        /* --- Magic Box Section (Center of Player) --- */
+        .magic-status-overlay {
+            position: absolute;
+            top: 45%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 5; pointer-events: none;
+            width: 100%;
+        }
+
+        .magic-box {
+            text-align: center;
+            padding: 30px;
+            max-width: 320px;
+            animation: magicShake 3s ease-in-out infinite;
+        }
+
+        .box-icon {
+            font-size: 100px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 20px var(--purple));
+        }
+
+        .magic-text { color: white; font-size: 22px; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .magic-subtext { color: #4f4; font-size: 16px; line-height: 1.4; font-weight: 500; }
+
+        /* Chat & Input Area */
+        .chat-section { width: 100%; max-width: 350px; height: 35%; pointer-events: auto; display: flex; flex-direction: column; gap: 10px; }
+        #chatMsgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 10px; mask-image: linear-gradient(transparent, black 15%); }
+        
+        .chat-bubble { background: var(--glass); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 12px; font-size: 14px; animation: slideUp 0.3s ease; border: 1px solid rgba(255,255,255,0.1); }
+        .chat-user { font-weight: bold; color: #ffca2c; margin-right: 5px; }
+
+        .input-group { display: flex; gap: 8px; margin-top: 5px; padding-bottom: 10px; }
+        .live-input { flex: 1; background: var(--glass); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 12px 15px; color: white; outline: none; backdrop-filter: blur(5px); }
+        .btn-send { background: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+        /* Animations */
+        @keyframes blink { 50% { opacity: 0.6; } }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes magicShake {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            15% { transform: translateY(-15px) rotate(-5deg); }
+            30% { transform: translateY(0) rotate(5deg); }
+            45% { transform: translateY(-10px) rotate(-3deg); }
+            60% { transform: translateY(0) rotate(3deg); }
+        }
+        
+        .btn-close { background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px; border-radius: 50%; cursor: pointer; pointer-events: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="live-container">
+        <video id="liveVideo" autoplay playsinline></video>
+
+        <div class="magic-status-overlay">
+            <div class="magic-box">
+                <div class="box-icon">🎁</div>
+                <h2 class="magic-text">Sorry, Next Version</h2>
+                <p class="magic-subtext">ဤ Feature အား နောက် Version တွင် အသုံးပြုနိုင်ပါမည်</p>
+            </div>
+        </div>
+
+        <div class="overlay">
+            <div class="top-bar">
+                <div style="display: flex; align-items: center;">
+                    <span class="live-badge">LIVE</span>
+                    <span class="viewer-count">👁️ <span id="viewCount">0</span></span>
+                </div>
+                <button class="btn-close" onclick="exitLive()">✕</button>
+            </div>
+
+            <div class="chat-section">
+                <div id="chatMsgs">
+                    </div>
+                <div class="input-group">
+                    <input type="text" id="liveMsgIn" class="live-input" placeholder="Say something...">
+                    <button class="btn-send" onclick="sendLiveMsg()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // ၁။ Supabase Configuration (Netlify Proxy သုံးထားသည်)
+    const { createClient } = supabase;
+    const supabaseUrl = window.location.origin + '/api/supabase';
+    const supabaseKey = 'public-access'; 
+    const _supabase = createClient(supabaseUrl, supabaseKey);
+
+    const streamId = new URLSearchParams(window.location.search).get('streamId');
+
+    // ၂။ Stream အခြေအနေကို စောင့်ကြည့်ခြင်း (Realtime)
+    function monitorStream() {
+        if(!streamId) return;
+
+        // Initial Load
+        _supabase.from('livestreams').select('*').eq('id', streamId).single()
+        .then(({data}) => {
+            if (!data || data.status === "ended") {
+                alert("This live stream has ended. No replays available.");
+                window.location.href = "user.html";
+            }
+            document.getElementById('viewCount').innerText = data.viewers || 0;
+        });
+
+        // Realtime Subscription (Stream status ပြောင်းလဲမှုအတွက်)
+        _supabase.channel('stream-updates')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'livestreams', filter: `id=eq.${streamId}` }, 
+        payload => {
+            if (payload.new.status === "ended") {
+                alert("This live stream has ended.");
+                window.location.href = "user.html";
+            }
+            document.getElementById('viewCount').innerText = payload.new.viewers || 0;
+        })
+        .subscribe();
+    }
+
+    // ၃။ Chat Messages များကို Realtime ရယူခြင်း
+    function loadLiveChat() {
+        if(!streamId) return;
+
+        // အဟောင်းများကို အရင်ပြရန်
+        _supabase.from('live_chats')
+        .select('*')
+        .eq('stream_id', streamId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+        .then(({data}) => {
+            const box = document.getElementById('chatMsgs');
+            box.innerHTML = "";
+            if(data) {
+                data.reverse().forEach(msg => appendChat(msg));
+            }
+        });
+
+        // Chat အသစ်တက်လာတိုင်း Update လုပ်ရန်
+        _supabase.channel('chat-room')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_chats', filter: `stream_id=eq.${streamId}` }, 
+        payload => {
+            appendChat(payload.new);
+        })
+        .subscribe();
+    }
+
+    function appendChat(data) {
+        const box = document.getElementById('chatMsgs');
+        const div = document.createElement('div');
+        div.className = "chat-bubble";
+        div.innerHTML = `<span class="chat-user">${data.user_name || 'User'}:</span> ${data.text}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight; // အောက်ဆုံးသို့ Scroll ဆွဲပေးမည်
+    }
+
+    // ၄။ Chat ပေးပို့ခြင်း
+    async function sendLiveMsg() {
+        const input = document.getElementById('liveMsgIn');
+        const val = input.value.trim();
+        if(!val || !streamId) return;
+
+        // Login User အမည်ကို ယူခြင်း (မရှိလျှင် 'Senior' ဟု သုံးမည်)
+        const { data: { user } } = await _supabase.auth.getUser();
+        const userName = user ? user.user_metadata.full_name || user.email : "Senior";
+
+        await _supabase.from('live_chats').insert([{
+            stream_id: streamId,
+            user_name: userName,
+            text: val
+        }]);
+        
+        input.value = "";
+    }
+
+    function exitLive() {
+        if(confirm("Live မှ ထွက်မှာလား Senior?")) {
+            window.location.href = "user.html";
+        }
+    }
+
+    // Initialize
+    monitorStream();
+    loadLiveChat();
+</script>
+</body>
+</html>
