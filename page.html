@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Health Community - Master</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="global-header">
+        <div class="logo">
+            <div class="e-box"><span class="e-letter">E</span></div>
+            <div class="logo-text">m</div>
+        </div>
+        <div class="header-tools" style="display: flex; align-items: center; gap: 15px;font-size: 22px;">
+            <a href="sug.html" style="text-decoration:none;">👥</a>
+            <a href="noti.html" style="text-decoration:none;">🔔</a>
+                    <a href="https://lovely-sprinkles-c9caf8.netlify.app" target="_blank" rel="noopener noreferrer">🏗️</a>
+
+        </div>
+    </header>
+
+    <div class="profile-card">
+        <div class="cover-photo">
+            <img src="https://via.placeholder.com/800x300?text=No+Cover" id="userCover">
+            <label for="coverIn" class="btn-cover" data-lang="edit_cover">📷 Edit Cover</label>
+            <input type="file" id="coverIn" hidden onchange="doUpload(this, 'cover')">
+        </div>
+
+        <div class="profile-info">
+            <div class="avatar-box">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar">
+                <label for="avatarIn" class="btn-avatar">📷</label>
+                <input type="file" id="avatarIn" hidden onchange="doUpload(this, 'avatar')">
+            </div>
+            <div class="name-box" style="margin-left: 10px;">
+                <h3 id="pName">Loading...</h3>
+                <p style="font-size: 12px; color: gray;" data-lang="user_tier">Normal User</p>
+            </div>
+        </div>
+        <div id="status" data-lang="uploading">ပုံတင်နေပါသည်...</div>
+    </div>
+
+        <div class="card" style="width: 100%; max-width: 500px; margin: 15px auto; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); background: #fff;">
+    <textarea id="postContent" rows="3" placeholder="ဗဟုသုတများ မျှဝေပါ..."></textarea>
+    <div class="upload-warning">🇲🇲 ဗီဒီယို 50MB အောက်သာ တင်ပါရန် 🌎</div>
+    
+    <div id="mediaPreviewBox" style="margin-top: 12px; display: none; position: relative; border-radius: 8px; overflow: hidden; background: #f9f9f9;"></div>
+
+    <div class="action-buttons">
+        <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;" onchange="previewMedia(this)" multiple>
+        <label for="mediaInput" class="btn-label">📷 ပုံ / ဗီဒီယို</label>
+        <button id="btnPost" class="btn-primary" onclick="uploadAndPost()">တင်မည်</button>
+    </div>
+</div>
+   <div id="newsFeed">
+        <div class="loading-status">⏳ ပို့စ်များကို ရှာဖွေနေပါသည်...</div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="profile.html" class="nav-item">👤<span>Profile</span></a>
+        <a href="group.html" class="nav-item">👯‍♀️🧑‍🤝‍🧑<span>Group</span></a>
+        <a href="user.html" class="nav-item">🏡<span>user</span></a>
+        <a href="chat.html" class="nav-item">💬
+            <span>chat</span></a>
+    </nav>
+<script>
+    // Global variable အဖြစ် ကြေညာလိုက်တာပါ
+    const MAIN_POST_TABLE = "page_posts"; 
+</script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
