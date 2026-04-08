@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Health Community - Master</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="global-header">
+        <div class="logo">
+            <div class="e-box"><span class="e-letter">E</span></div>
+            <div class="logo-text">m</div>
+        </div>
+        <div class="header-tools" style="display: flex; align-items: center; gap: 15px;font-size: 22px;">
+            <a href="sug.html" style="text-decoration:none;">👥</a>
+            <a href="noti.html" style="text-decoration:none;">🔔</a>
+                    <a href="https://lovely-sprinkles-c9caf8.netlify.app" target="_blank" rel="noopener noreferrer">🏗️</a>
+
+        </div>
+    </header>
+
+    <div class="profile-card">
+        <div class="cover-photo">
+            <img src="https://via.placeholder.com/800x300?text=No+Cover" id="userCover">
+            <label for="coverIn" class="btn-cover" data-lang="edit_cover">📷 Edit Cover</label>
+            <input type="file" id="coverIn" hidden onchange="doUpload(this, 'cover')">
+        </div>
+
+        <div class="profile-info">
+            <div class="avatar-box">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar">
+                <label for="avatarIn" class="btn-avatar">📷</label>
+                <input type="file" id="avatarIn" hidden onchange="doUpload(this, 'avatar')">
+            </div>
+            <div class="name-box" style="margin-left: 10px;">
+                <h3 id="pName">Loading...</h3>
+                <p style="font-size: 12px; color: gray;" data-lang="user_tier">Normal User</p>
+            </div>
+        </div>
+        <div id="status" data-lang="uploading">ပုံတင်နေပါသည်...</div>
+    </div>
+<div class="search-container" style="width: 100%; max-width: 500px; margin: 10px auto; padding: 0 15px;">
+    <input type="text" id="searchInput" placeholder="ရှာလိုသည့် Page အမည်ရိုက်ပါ..." 
+           style="width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box;">
+    
+    <div id="searchResults" style="margin-top: 10px;"></div>
+</div>
+
+        <div class="card" style="width: 100%; max-width: 500px; margin: 15px auto; padding: 15px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); background: #fff;">
+    <textarea id="postContent" rows="3"  placeholder="ဗဟုသုတများ မျှဝေပါ..."style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid #ccc; resize: none;"></textarea>
+    <div class="upload-warning">🇲🇲 ဗီဒီယို 50MB အောက်သာ တင်ပါရန် 🌎</div>
+    
+    <div id="mediaPreviewBox" style="margin-top: 12px; display: none; position: relative; border-radius: 8px; overflow: hidden; background: #f9f9f9;"></div>
+
+    <div class="action-buttons">
+        <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;" onchange="previewMedia(this)" multiple>
+        <label for="mediaInput" class="btn-label">📷 ပုံ / ဗီဒီယို</label>
+        <button id="btnPost" class="btn-primary" onclick="uploadAndPost()">တင်မည်</button>
+    </div>
+</div>
+   <div id="newsFeed">
+        <div class="loading-status">⏳ ပို့စ်များကို ရှာဖွေနေပါသည်...</div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="profile.html" class="nav-item">👤<span>Profile</span></a>
+        <a href="group.html" class="nav-item">👯‍♀️🧑‍🤝‍🧑<span>Group</span></a>
+        <a href="user.html" class="nav-item">🏡<span>user</span></a>
+        <a href="chat.html" class="nav-item">💬
+            <span>chat</span></a>
+    </nav>
+    <script>
+    // Search Input မှာ စာရိုက်တိုင်း အလုပ်လုပ်မယ့်စနစ် (Real-time Search)
+document.getElementById('searchInput').addEventListener('input', async (e) => {
+    const query = e.target.value.trim();
+    const resultBox = document.getElementById('searchResults');
+
+    if (query.length < 1) {
+        resultBox.innerHTML = "";
+        return;
+    }
+
+    try {
+        // Supabase ထဲက pages_list table ထဲမှာ page_name ကို ရှာမယ်
+        // Table နာမည်ကို Senior သတ်မှတ်ထားတဲ့အတိုင်း ပြောင်းပေးပါ (ဥပမာ - 'app_pages')
+        const { data, error } = await sb
+            .from('pages_list') 
+            .select('page_name, page_url')
+            .ilike('page_name', `%${query}%`)
+            .limit(5);
+
+        if (error) throw error;
+
+        if (data.length > 0) {
+            resultBox.innerHTML = data.map(item => `
+                <a href="${item.page_url}" style="display: block; background: white; padding: 12px; margin-bottom: 5px; 
+                   border-radius: 10px; text-decoration: none; color: #6A1B9A; border-left: 5px solid #6A1B9A; 
+                   box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-weight: bold;">
+                   🚀 သွားရန် - ${item.page_name}
+                </a>
+            `).join('');
+        } else {
+            resultBox.innerHTML = '<p style="color: gray; font-size: 13px; padding-left: 10px;">ကိုက်ညီသည့် Page မရှိပါ Senior။</p>';
+        }
+
+    } catch (e) {
+        console.error("Search Error:", e.message);
+    }
+});
+</script>
+<script>
+    // Global variable အဖြစ် ကြေညာလိုက်တာပါ
+    const MAIN_POST_TABLE = "page_posts"; 
+</script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
