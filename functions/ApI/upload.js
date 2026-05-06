@@ -1,9 +1,7 @@
-// functions/api/upload.js
-
 export async function onRequest(context) {
     const { request, env } = context;
     
-    // CORS & JSON Headers
+    // CORS Headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -11,17 +9,11 @@ export async function onRequest(context) {
         'Content-Type': 'application/json'
     };
 
-    // 1. Handle Options (CORS Preflight)
-    if (request.method === 'OPTIONS') {
-        return new Response(null, { headers });
-    }
-
-    // 2. Only allow POST
+    // Preflight request handle လုပ်ခြင်း
+    if (request.method === 'OPTIONS') return new Response(null, { headers });
+    
     if (request.method !== 'POST') {
-        return new Response(JSON.stringify({ 
-            success: false, 
-            error: "Method not allowed" 
-        }), { status: 405, headers });
+        return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), { status: 405, headers });
     }
 
     try {
@@ -30,13 +22,10 @@ export async function onRequest(context) {
         const userId = formData.get('userId');
 
         if (!userId) {
-            return new Response(JSON.stringify({ 
-                success: false, 
-                error: "User ID လိုအပ်ပါသည်" 
-            }), { status: 400, headers });
+            return new Response(JSON.stringify({ success: false, error: "User ID လိုအပ်ပါသည်" }), { status: 400, headers });
         }
 
-        // --- အဆင့် (၁) Database ထဲမှာ User ရဲ့ Badge Status ကို စစ်ခြင်း ---
+        // --- ၁။ Database မှာ User ရဲ့ Badge Status စစ်ခြင်း ---
         const userCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=has_badge`, {
             method: 'GET',
             headers: {
@@ -46,43 +35,34 @@ export async function onRequest(context) {
         });
 
         const userData = await userCheckRes.json();
-        const isBadge = userData.length > 0 ? userData[0].has_badge : false;
+        const isBadge = userData && userData.length > 0 ? userData[0].has_badge : false;
 
-        // --- အဆင့် (၂) Limit များ သတ်မှတ်ခြင်း ---
+        // --- ၂။ Limits သတ်မှတ်ခြင်း ---
         const maxFiles = isBadge ? 10 : 1; 
-        const maxVideoSize = isBadge ? 50 * 1024 * 1024 : 20 * 1024 * 1024; // Badge 50MB, Normal 20MB
+        const maxVideoSize = isBadge ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
         const maxImageSize = 5 * 1024 * 1024; // 5MB
 
-        if (!files || files.length === 0) {
-            return new Response(JSON.stringify({ success: false, error: "ဖိုင်ရွေးချယ်မှု မတွေ့ပါ" }), { status: 400, headers });
-        }
-
         if (files.length > maxFiles) {
-            return new Response(JSON.stringify({ 
-                success: false, 
-                error: `${isBadge ? 'Badge' : 'Normal'} အကောင့်အတွက် အများဆုံး ${maxFiles} ဖိုင်သာ ရပါမည်။` 
-            }), { status: 400, headers });
+            return new Response(JSON.stringify({ success: false, error: `Limit ထက်ကျော်လွန်နေပါသည်။ အများဆုံး ${maxFiles} ဖိုင်သာ တင်နိုင်ပါသည်။` }), { status: 400, headers });
         }
 
-        let uploadResults = [];
+        let uploadUrls = [];
 
-        // Loop ပတ်ပြီး ဖိုင်တစ်ခုချင်းစီ တင်မယ်
         for (const file of files) {
             const isVideo = file.type.startsWith('video/');
             const currentMaxSize = isVideo ? maxVideoSize : maxImageSize;
 
             if (file.size > currentMaxSize) {
-                const limitLabel = isVideo ? (isBadge ? '50MB' : '20MB') : '5MB';
-                throw new Error(`${file.name} ဆိုဒ် ကြီးလွန်းသည်။ Limit: ${limitLabel}`);
+                throw new Error(`${file.name} သည် အရွယ်အစား ကြီးလွန်းနေပါသည်။`);
             }
 
             let uploadedUrl = "";
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            // ဖိုင်အမည်ကို ထပ်နေခြင်းမရှိအောင် Unique ဖြစ်အောင်လုပ်ခြင်း
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/\s+/g, '_')}`;
 
-            // --- အဆင့် (၃) External Storage သို့ တင်ခြင်း ---
+            // --- ၃။ Storage သို့ တင်ခြင်း ---
             if (isVideo) {
-                // Bunny Storage Upload
+                // Bunny.net သို့ ဗီဒီယိုတင်ခြင်း
                 const arrayBuffer = await file.arrayBuffer();
                 const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
                     method: 'PUT',
@@ -92,22 +72,24 @@ export async function onRequest(context) {
                     },
                     body: arrayBuffer
                 });
-                if (!bunnyRes.ok) throw new Error('Bunny Storage upload failed');
+
+                if (!bunnyRes.ok) throw new Error("Bunny.net သို့ တင်ခြင်း မအောင်မြင်ပါ။");
                 uploadedUrl = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
             } else {
-                // ImgBB Upload
+                // ImgBB သို့ ပုံတင်ခြင်း
                 const imgbbFormData = new FormData();
                 imgbbFormData.append('image', file);
                 const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${env.IMGBB_KEY}`, {
                     method: 'POST',
                     body: imgbbFormData
                 });
-                const result = await imgbbRes.json();
-                if (!result.success) throw new Error('ImgBB upload failed');
-                uploadedUrl = result.data.url;
+                const imgbbResult = await imgbbRes.json();
+                
+                if (!imgbbResult.success) throw new Error("ImgBB သို့ တင်ခြင်း မအောင်မြင်ပါ။");
+                uploadedUrl = imgbbResult.data.url;
             }
 
-            // --- အဆင့် (၄) Database မှာ Upload Record သိမ်းခြင်း ---
+            // --- ၄။ Database မှာ Record သိမ်းခြင်း (Logging) ---
             await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
                 method: 'POST',
                 headers: {
@@ -119,19 +101,17 @@ export async function onRequest(context) {
                     url: uploadedUrl,
                     type: isVideo ? 'video' : 'image',
                     user_id: userId,
-                    storage_provider: isVideo ? 'bunny' : 'imgbb',
-                    created_at: new Date().toISOString()
+                    storage_provider: isVideo ? 'bunny' : 'imgbb'
                 })
             });
 
-            uploadResults.push({ url: uploadedUrl, type: isVideo ? 'video' : 'image' });
+            uploadUrls.push(uploadedUrl);
         }
 
-        // အောင်မြင်ကြောင်း ပြန်ကြားခြင်း
-        return new Response(JSON.stringify({
-            success: true,
-            isBadgeUser: isBadge,
-            files: uploadResults
+        // Frontend က script.js နဲ့ တိုက်ရိုက်ချိတ်ဆက်နိုင်ရန် Response ပို့ခြင်း
+        return new Response(JSON.stringify({ 
+            success: true, 
+            urls: uploadUrls 
         }), { headers });
 
     } catch (error) {
@@ -141,4 +121,3 @@ export async function onRequest(context) {
         }), { status: 500, headers });
     }
 }
-  
