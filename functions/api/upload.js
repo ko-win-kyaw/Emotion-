@@ -42,6 +42,8 @@ export async function onRequest(context) {
             if (userCheckRes.ok) {
                 const userData = await userCheckRes.json();
                 hasBadge = userData?.[0]?.has_badge || false;
+            } else {
+                console.error("Supabase returned non-OK status:", userCheckRes.status);
             }
         } catch (e) {
             console.error("Badge check network failed:", e);
@@ -61,8 +63,7 @@ export async function onRequest(context) {
         const uploadUrls = [];
         
         for (const file of files) {
-            // Extension ကို စစ်ပြီး ဗီဒီယို ဟုတ်မဟုတ် ခွဲခြားပါမယ်
-            const isVideo = file.type.startsWith('video/') || file.name.match(/\.(mp4|webm|mov|m4v|3gp)$/i);
+            const isVideo = file.type.startsWith('video/');
             const limit = isVideo ? maxVideoSize : maxImageSize;
             
             if (file.size > limit) {
@@ -76,24 +77,26 @@ export async function onRequest(context) {
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${cleanFileName}`;
             let url = "";
 
-            if (isVideo) {
-                // Bunny Storage သို့ ဗီဒီယိုတင်ခြင်း
-                const buffer = await file.arrayBuffer();
-                const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
-                    method: 'PUT',
-                    headers: { 
-                        'AccessKey': env.BUNNY_KEY, 
-                        'Content-Type': 'video/mp4' // Bunny အကြိုက် 'video/mp4' ကို ပြန်ထည့်ပြီး အမှားပြင်ထားပါတယ်
-                    },
-                    body: buffer
-                });
-                
-                if (!bunnyRes.ok) {
-                    throw new Error(`Bunny upload failed: ${bunnyRes.statusText}`);
-                }
-                url = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
-            } else {
-                // ImgBB သို့ ဓာတ်ပုံတင်ခြင်း
+            // ... (အပေါ်က ကုဒ်များ)
+if (isVideo) {
+    const buffer = await file.arrayBuffer();
+    const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
+        method: 'PUT',
+        headers: { 
+            'AccessKey': env.BUNNY_KEY, 
+            'Content-Type': 'video/mp4' 
+        }, // 👈 သေသပ်စွာ ဒီမှာ ပိတ်ပေးရပါမယ်
+        body: buffer
+    });
+    
+    if (!bunnyRes.ok) {
+        throw new Error(`Bunny upload failed: ${bunnyRes.statusText}`);
+    }
+    url = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
+} else {
+// ... (အောက်က ကုဒ်များ)
+
+
                 const imgbbForm = new FormData();
                 imgbbForm.append('image', file);
                 
@@ -107,12 +110,13 @@ export async function onRequest(context) {
                 if (!imgbbData.success) {
                     throw new Error(`ImgBB upload failed: ${imgbbData.error?.message || 'Unknown error'}`);
                 }
+                
                 url = imgbbData.data.url;
             }
 
-            // Database သို့ Log သွင်းခြင်း
+            // ၃။ Database သို့ Log သွင်းခြင်း
             try {
-                await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
+                const dbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
                     method: 'POST',
                     headers: {
                         'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
@@ -128,6 +132,10 @@ export async function onRequest(context) {
                         file_size: file.size
                     })
                 });
+
+                if (!dbRes.ok) {
+                    console.error("DB Insert Failed but file uploaded:", dbRes.statusText);
+                }
             } catch (err) {
                 console.error("DB Log Network Error:", err);
             }
@@ -149,5 +157,5 @@ export async function onRequest(context) {
             headers 
         });
     }
-                                                }
-                          
+    }
+                
