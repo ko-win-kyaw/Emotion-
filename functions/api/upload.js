@@ -1,4 +1,4 @@
-export async function onRequest(context) {
+  export async function onRequest(context) {
     const { request, env } = context;
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -30,7 +30,7 @@ export async function onRequest(context) {
             });
         }
 
-        // ၁။ Supabase Profile Check (ပိုမိုကောင်းမွန်သော Error Handling နှင့်အတူ)
+        // ၁။ Supabase Profile Check
         let hasBadge = false;
         try {
             const userCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=has_badge`, {
@@ -43,9 +43,6 @@ export async function onRequest(context) {
             if (userCheckRes.ok) {
                 const userData = await userCheckRes.json();
                 hasBadge = userData?.[0]?.has_badge || false;
-            } else {
-                console.error("Supabase returned non-OK status:", userCheckRes.status);
-                // Option: DB ကျနေရင် default true ပေးမလား၊ false ပေးမလား စဉ်းစားရန်
             }
         } catch (e) {
             console.error("Badge check network failed:", e);
@@ -55,7 +52,7 @@ export async function onRequest(context) {
         const maxVideoSize = hasBadge ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
         const maxImageSize = 5 * 1024 * 1024;
 
-        // ၂။ ဖိုင်အမြောက်အမြား ဝင်မလာခင် ချက်ချင်း ဖြတ်စစ်ခြင်း (Early Validation)
+        // ၂။ ဖိုင်အမြောက်အမြား ဝင်မလာခင် ကြိုဖြတ်စစ်ခြင်း (CORS headers အပြည့်အစုံဖြင့်)
         if (files.length > maxFiles) {
             return new Response(JSON.stringify({ success: false, error: `Max ${maxFiles} files allowed` }), { 
                 status: 400, 
@@ -70,38 +67,37 @@ export async function onRequest(context) {
             const limit = isVideo ? maxVideoSize : maxImageSize;
             
             if (file.size > limit) {
-                return new Response(JSON.stringify({ success: false, error: `${file.name} exceeds size limit` }), { 
+                return new Response(JSON.stringify({ success: false, error: `${file.name} က သတ်မှတ်ထားထက် ကြီးနေပါသည်။` }), { 
                     status: 400, 
                     headers 
                 });
             }
 
-            // File name ကို ပိုပြီး clean ဖြစ်အောင် လုပ်ခြင်း
             const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${cleanFileName}`;
             let url = "";
 
             if (isVideo) {
-                // Bunny CDN Upload
+                // Bunny CDN Upload 
                 const buffer = await file.arrayBuffer();
                 const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
                     method: 'PUT',
                     headers: { 
                         'AccessKey': env.BUNNY_KEY, 
-                        'Content-Type': file.type 
+                        'Content-Type': file.type,
+                        'Content-Length': buffer.byteLength.toString()
                     },
                     body: buffer
                 });
                 
                 if (!bunnyRes.ok) {
-                    throw new Error(`Bunny upload failed: ${bunnyRes.statusText}`);
+                    throw new Error(`Bunny Storage က လက်မခံပါ (Status: ${bunnyRes.status})`);
                 }
                 
                 url = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
             } else {
                 // ImgBB Upload
                 const imgbbForm = new FormData();
-                // ImgBB သည် base64 သို့မဟုတ် binary file blob ကို လက်ခံသည်
                 imgbbForm.append('image', file);
                 
                 const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${env.IMGBB_KEY}`, {
@@ -110,23 +106,21 @@ export async function onRequest(context) {
                 });
                 
                 const imgbbData = await imgbbRes.json();
-                
                 if (!imgbbData.success) {
-                    throw new Error(`ImgBB upload failed: ${imgbbData.error?.message || 'Unknown error'}`);
+                    throw new Error("ImgBB upload failed");
                 }
-                
                 url = imgbbData.data.url;
             }
 
             // ၃။ Database သို့ Log သွင်းခြင်း
             try {
-                const dbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
+                await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
                     method: 'POST',
                     headers: {
                         'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
                         'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
                         'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal' // Performance ပိုကောင်းစေရန် ပြန်ပေးတဲ့ data ကို လျှော့ချခြင်း
+                        'Prefer': 'return=minimal'
                     },
                     body: JSON.stringify({
                         url: url,
@@ -136,16 +130,10 @@ export async function onRequest(context) {
                         file_size: file.size
                     })
                 });
-
-                if (!dbRes.ok) {
-                    console.error("DB Insert Failed but file uploaded:", dbRes.statusText);
-                    // ဒီနေရာမှာ throw လုပ်ရင် တင်ပြီးသား file url ပါ ပျက်သွားမှာမို့ လောလောဆယ် log ပဲ ပြထားပါတယ်
-                }
             } catch (err) {
                 console.error("DB Log Network Error:", err);
             }
 
-            // အားလုံး အောင်မြင်မှ URL ကို array ထဲ ထည့်မယ်
             uploadUrls.push(url);
         }
 
@@ -155,6 +143,7 @@ export async function onRequest(context) {
         }), { headers });
         
     } catch (err) {
+        // Catch ထဲမှာလည်း CORS Header သေချာပြန်ပေးရမည်
         return new Response(JSON.stringify({ 
             success: false, 
             error: err.message || "Internal Server Error"
@@ -163,4 +152,5 @@ export async function onRequest(context) {
             headers 
         });
     }
-}
+                }
+                    
