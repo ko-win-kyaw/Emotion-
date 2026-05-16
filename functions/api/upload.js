@@ -1,5 +1,9 @@
+// functions/api/upload.js
+
 export async function onRequest(context) {
     const { request, env } = context;
+    
+    // CORS Headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -7,15 +11,11 @@ export async function onRequest(context) {
         'Content-Type': 'application/json'
     };
 
-    if (request.method === 'OPTIONS') {
-        return new Response(null, { headers });
-    }
+    // Preflight request handle လုပ်ခြင်း
+    if (request.method === 'OPTIONS') return new Response(null, { headers });
     
     if (request.method !== 'POST') {
-        return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), { 
-            status: 405, 
-            headers 
-        });
+        return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), { status: 405, headers });
     }
 
     try {
@@ -23,139 +23,103 @@ export async function onRequest(context) {
         const files = formData.getAll('file');
         const userId = formData.get('userId');
 
-        if (!userId || !files.length) {
-            return new Response(JSON.stringify({ success: false, error: "Missing userId or files" }), { 
-                status: 400, 
-                headers 
-            });
+        if (!userId) {
+            return new Response(JSON.stringify({ success: false, error: "User ID လိုအပ်ပါသည်" }), { status: 400, headers });
         }
 
-        let hasBadge = false;
-        try {
-            const userCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=has_badge`, {
-                headers: { 
-                    'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 
-                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` 
-                }
-            });
-            
-            if (userCheckRes.ok) {
-                const userData = await userCheckRes.json();
-                hasBadge = userData?.[0]?.has_badge || false;
-            } else {
-                console.error("Supabase returned non-OK status:", userCheckRes.status);
+        // --- ၁။ Database မှာ User ရဲ့ Badge Status စစ်ခြင်း ---
+        const userCheckRes = await fetch(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=has_badge`, {
+            method: 'GET',
+            headers: {
+                'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
             }
-        } catch (e) {
-            console.error("Badge check network failed:", e);
-        }
+        });
 
-        const maxFiles = hasBadge ? 10 : 1;
-        const maxVideoSize = hasBadge ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
-        const maxImageSize = 5 * 1024 * 1024;
+        const userData = await userCheckRes.json();
+        const isBadge = userData && userData.length > 0 ? userData[0].has_badge : false;
+
+        // --- ၂။ Limits သတ်မှတ်ခြင်း ---
+        const maxFiles = isBadge ? 10 : 1; 
+        const maxVideoSize = isBadge ? 50 * 1024 * 1024 : 20 * 1024 * 1024;
+        const maxImageSize = 5 * 1024 * 1024; // 5MB
 
         if (files.length > maxFiles) {
-            return new Response(JSON.stringify({ success: false, error: `Max ${maxFiles} files allowed` }), { 
-                status: 400, 
-                headers 
-            });
+            return new Response(JSON.stringify({ success: false, error: `Limit ထက်ကျော်လွန်နေပါသည်။ အများဆုံး ${maxFiles} ဖိုင်သာ တင်နိုင်ပါသည်။` }), { status: 400, headers });
         }
 
-        const uploadUrls = [];
-        
+        let uploadUrls = [];
+
         for (const file of files) {
             const isVideo = file.type.startsWith('video/');
-            const limit = isVideo ? maxVideoSize : maxImageSize;
-            
-            if (file.size > limit) {
-                return new Response(JSON.stringify({ success: false, error: `${file.name} exceeds size limit` }), { 
-                    status: 400, 
-                    headers 
-                });
+            const currentMaxSize = isVideo ? maxVideoSize : maxImageSize;
+
+            if (file.size > currentMaxSize) {
+                throw new Error(`${file.name} သည် အရွယ်အစား ကြီးလွန်းနေပါသည်။`);
             }
 
-            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${cleanFileName}`;
-            let url = "";
+            let uploadedUrl = "";
+            // ဖိုင်အမည်ကို ထပ်နေခြင်းမရှိအောင် Unique ဖြစ်အောင်လုပ်ခြင်း
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/\s+/g, '_')}`;
 
-            // ... (အပေါ်က ကုဒ်များ)
-if (isVideo) {
-    const buffer = await file.arrayBuffer();
-    const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
-        method: 'PUT',
-        headers: { 
-            'AccessKey': env.BUNNY_KEY, 
-            'Content-Type': 'video/mp4' 
-        }, // 👈 သေသပ်စွာ ဒီမှာ ပိတ်ပေးရပါမယ်
-        body: buffer
-    });
-    
-    if (!bunnyRes.ok) {
-        throw new Error(`Bunny upload failed: ${bunnyRes.statusText}`);
-    }
-    url = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
-} else {
-// ... (အောက်က ကုဒ်များ)
+            // --- ၃။ Storage သို့ တင်ခြင်း ---
+            if (isVideo) {
+                // Bunny.net သို့ ဗီဒီယိုတင်ခြင်း
+                const arrayBuffer = await file.arrayBuffer();
+                const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'AccessKey': env.BUNNY_KEY, 
+                        'Content-Type': file.type 
+                    },
+                    body: arrayBuffer
+                });
 
-
-                const imgbbForm = new FormData();
-                imgbbForm.append('image', file);
-                
+                if (!bunnyRes.ok) throw new Error("Bunny.net သို့ တင်ခြင်း မအောင်မြင်ပါ။");
+                uploadedUrl = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
+            } else {
+                // ImgBB သို့ ပုံတင်ခြင်း
+                const imgbbFormData = new FormData();
+                imgbbFormData.append('image', file);
                 const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${env.IMGBB_KEY}`, {
                     method: 'POST',
-                    body: imgbbForm
+                    body: imgbbFormData
                 });
+                const imgbbResult = await imgbbRes.json();
                 
-                const imgbbData = await imgbbRes.json();
-                
-                if (!imgbbData.success) {
-                    throw new Error(`ImgBB upload failed: ${imgbbData.error?.message || 'Unknown error'}`);
-                }
-                
-                url = imgbbData.data.url;
+                if (!imgbbResult.success) throw new Error("ImgBB သို့ တင်ခြင်း မအောင်မြင်ပါ။");
+                uploadedUrl = imgbbResult.data.url;
             }
 
-            // ၃။ Database သို့ Log သွင်းခြင်း
-            try {
-                const dbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-                        'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal' 
-                    },
-                    body: JSON.stringify({
-                        url: url,
-                        type: isVideo ? 'video' : 'image',
-                        user_id: userId,
-                        storage_provider: isVideo ? 'bunny' : 'imgbb',
-                        file_size: file.size
-                    })
-                });
+            // --- ၄။ Database မှာ Record သိမ်းခြင်း (Logging) ---
+            await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
+                method: 'POST',
+                headers: {
+                    'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: uploadedUrl,
+                    type: isVideo ? 'video' : 'image',
+                    user_id: userId,
+                    storage_provider: isVideo ? 'bunny' : 'imgbb'
+                })
+            });
 
-                if (!dbRes.ok) {
-                    console.error("DB Insert Failed but file uploaded:", dbRes.statusText);
-                }
-            } catch (err) {
-                console.error("DB Log Network Error:", err);
-            }
-
-            uploadUrls.push(url);
+            uploadUrls.push(uploadedUrl);
         }
 
+        // Frontend က script.js နဲ့ တိုက်ရိုက်ချိတ်ဆက်နိုင်ရန် Response ပို့ခြင်း
         return new Response(JSON.stringify({ 
             success: true, 
             urls: uploadUrls 
         }), { headers });
-        
-    } catch (err) {
+
+    } catch (error) {
         return new Response(JSON.stringify({ 
             success: false, 
-            error: err.message || "Internal Server Error"
-        }), { 
-            status: 500, 
-            headers 
-        });
+            error: error.message 
+        }), { status: 500, headers });
     }
-    }
-                
+}
