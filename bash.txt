@@ -1,0 +1,4 @@
+# Folder နာမည်ပြောင်းရန် (case-sensitive)
+git mv functions/Api functions/api
+git commit -m "Fix: change Api to api (lowercase)"
+git push
