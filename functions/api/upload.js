@@ -1,4 +1,4 @@
-   export async function onRequest(context) {
+export async function onRequest(context) {
     const { request, env } = context;
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -42,8 +42,6 @@
             if (userCheckRes.ok) {
                 const userData = await userCheckRes.json();
                 hasBadge = userData?.[0]?.has_badge || false;
-            } else {
-                console.error("Supabase returned non-OK status:", userCheckRes.status);
             }
         } catch (e) {
             console.error("Badge check network failed:", e);
@@ -63,7 +61,8 @@
         const uploadUrls = [];
         
         for (const file of files) {
-            const isVideo = file.type.startsWith('video/');
+            // Extension ကို စစ်ပြီး ဗီဒီယို ဟုတ်မဟုတ် ခွဲခြားပါမယ်
+            const isVideo = file.type.startsWith('video/') || file.name.match(/\.(mp4|webm|mov|m4v|3gp)$/i);
             const limit = isVideo ? maxVideoSize : maxImageSize;
             
             if (file.size > limit) {
@@ -84,7 +83,7 @@
                     method: 'PUT',
                     headers: { 
                         'AccessKey': env.BUNNY_KEY, 
-                        'Content-Type': file.type  // dynamic ဖတ်အောင် ပြန်ပြင်ထားပါတယ်
+                        'Content-Type': 'video/mp4' // Bunny အကြိုက် 'video/mp4' ကို ပြန်ထည့်ပြီး အမှားပြင်ထားပါတယ်
                     },
                     body: buffer
                 });
@@ -111,9 +110,9 @@
                 url = imgbbData.data.url;
             }
 
-            // ၃။ Database သို့ Log သွင်းခြင်း
+            // Database သို့ Log သွင်းခြင်း
             try {
-                const dbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
+                await fetch(`${env.SUPABASE_URL}/rest/v1/uploads`, {
                     method: 'POST',
                     headers: {
                         'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
@@ -129,10 +128,6 @@
                         file_size: file.size
                     })
                 });
-
-                if (!dbRes.ok) {
-                    console.error("DB Insert Failed but file uploaded:", dbRes.statusText);
-                }
             } catch (err) {
                 console.error("DB Log Network Error:", err);
             }
@@ -154,6 +149,5 @@
             headers 
         });
     }
-}
-
-                            
+                                                }
+                          
