@@ -1,4 +1,4 @@
-export async function onRequest(context) {
+   export async function onRequest(context) {
     const { request, env } = context;
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -78,24 +78,23 @@ export async function onRequest(context) {
             let url = "";
 
             if (isVideo) {
+                // Bunny Storage သို့ ဗီဒီယိုတင်ခြင်း
                 const buffer = await file.arrayBuffer();
                 const bunnyRes = await fetch(`https://storage.bunnycdn.com/${env.BUNNY_STORAGE_ZONE}/${fileName}`, {
                     method: 'PUT',
                     headers: { 
-    'AccessKey': env.BUNNY_KEY,
-    'Content-Type': 'video/mp4'
-},
-
+                        'AccessKey': env.BUNNY_KEY, 
+                        'Content-Type': file.type  // dynamic ဖတ်အောင် ပြန်ပြင်ထားပါတယ်
+                    },
                     body: buffer
                 });
                 
                 if (!bunnyRes.ok) {
                     throw new Error(`Bunny upload failed: ${bunnyRes.statusText}`);
                 }
-                
                 url = `${env.BUNNY_PULL_ZONE_URL}/${fileName}`;
             } else {
-                // ImgBB Upload
+                // ImgBB သို့ ဓာတ်ပုံတင်ခြင်း
                 const imgbbForm = new FormData();
                 imgbbForm.append('image', file);
                 
@@ -109,7 +108,6 @@ export async function onRequest(context) {
                 if (!imgbbData.success) {
                     throw new Error(`ImgBB upload failed: ${imgbbData.error?.message || 'Unknown error'}`);
                 }
-                
                 url = imgbbData.data.url;
             }
 
@@ -156,5 +154,6 @@ export async function onRequest(context) {
             headers 
         });
     }
-                }
-                    
+}
+
+                            
